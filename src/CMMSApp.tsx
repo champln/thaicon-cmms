@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import IoTMonitor from "./IoTMonitor";
+import { roleLabels } from "./access";
+import type { DemoUser, Jobsite, UserRole } from "./access";
 
 type Page =
   | "dashboard"
@@ -309,10 +311,16 @@ const navItems: { id: Page; label: string; icon: IconName }[] = [
   { id: "iot", label: "IoT Monitor", icon: "iot" },
 ];
 
+const pagesByRole: Record<UserRole, Page[]> = {
+  admin: navItems.map((item) => item.id),
+  engineer: ["dashboard", "work-orders", "pm", "assets", "alerts", "reports", "iot"],
+  user: ["dashboard", "pm", "assets", "reports"],
+};
+
 const pageTitles: Record<Page, { title: string; subtitle: string }> = {
   dashboard: {
     title: "ภาพรวมการบำรุงรักษา",
-    subtitle: "ติดตามงาน เครื่องจักร และเหตุการณ์สำคัญของทุกไซต์",
+    subtitle: "ติดตามงาน เครื่องจักร และเหตุการณ์สำคัญของ Jobsite ที่เลือก",
   },
   "work-orders": {
     title: "ใบงานทั้งหมด",
@@ -340,7 +348,7 @@ const pageTitles: Record<Page, { title: string; subtitle: string }> = {
   },
   iot: {
     title: "IoT Monitoring Center",
-    subtitle: "ติดตาม Gateway อุปกรณ์ และสัญญาณเตือนจากทุกไซต์แบบรวมศูนย์",
+    subtitle: "ติดตาม Gateway อุปกรณ์ และสัญญาณเตือนของ Jobsite ที่เลือก",
   },
 };
 
@@ -605,18 +613,28 @@ function WorkOrderTable({
 function DashboardPage({
   orders,
   alerts,
+  schedule,
+  siteAssets,
+  pmCompliance,
+  canOperate,
   onSelectOrder,
   onNavigate,
   onCreate,
 }: {
   orders: WorkOrder[];
   alerts: AlertItem[];
+  schedule: PmItem[];
+  siteAssets: Asset[];
+  pmCompliance: number;
+  canOperate: boolean;
   onSelectOrder: (order: WorkOrder) => void;
   onNavigate: (page: Page) => void;
   onCreate: () => void;
 }) {
   const openOrders = orders.filter((order) => order.status !== "เสร็จสิ้น");
   const criticalAlerts = alerts.filter((alert) => alert.level === "critical" && !alert.acknowledged);
+  const watchedAssets = siteAssets.filter((asset) => asset.health !== "ปกติ");
+  const dueToday = openOrders.filter((order) => order.due.includes("วันนี้"));
 
   return (
     <>
@@ -624,87 +642,95 @@ function DashboardPage({
         <div>
           <span className="cmms-live-label">
             <i />
-            OPERATIONS LIVE
+            {canOperate ? "OPERATIONS LIVE" : "VIEWER ACCESS"}
           </span>
-          <h2>วันนี้มี 3 งานที่ต้องติดตามเป็นพิเศษ</h2>
-          <p>พบ Alarm วิกฤต 1 รายการ และใบงาน 2 รายการใกล้ถึงกำหนด</p>
+          <h2>{canOperate ? `วันนี้มี ${openOrders.length + criticalAlerts.length} รายการที่ต้องติดตาม` : "กำลังดูข้อมูลในสิทธิ์ Viewer"}</h2>
+          <p>{canOperate ? `พบ Alarm วิกฤต ${criticalAlerts.length} รายการ และใบงานครบกำหนดวันนี้ ${dueToday.length} รายการ` : "บัญชีนี้ดูแผน PM และรายงานของ Jobsite ที่ได้รับอนุญาตได้ แต่ไม่สามารถแก้ไขข้อมูล"}</p>
         </div>
-        <button className="cmms-primary-button" type="button" onClick={onCreate}>
-          <Icon name="plus" size={18} />
-          สร้างใบงาน
-        </button>
+        {canOperate && (
+          <button className="cmms-primary-button" type="button" onClick={onCreate}>
+            <Icon name="plus" size={18} />
+            สร้างใบงาน
+          </button>
+        )}
       </section>
 
-      <section className="cmms-kpi-grid" aria-label="ตัวชี้วัดหลัก">
-        <KpiCard
-          icon="clipboard"
-          label="ใบงานที่เปิดอยู่"
-          value={String(openOrders.length)}
-          note="2 งานครบกำหนดวันนี้"
-          tone="blue"
-        />
+      <section className={`cmms-kpi-grid ${canOperate ? "" : "viewer"}`} aria-label="ตัวชี้วัดหลัก">
+        {canOperate && (
+          <KpiCard
+            icon="clipboard"
+            label="ใบงานที่เปิดอยู่"
+            value={String(openOrders.length)}
+            note={`${dueToday.length} งานครบกำหนดวันนี้`}
+            tone="blue"
+          />
+        )}
         <KpiCard
           icon="calendar"
           label="PM เดือนนี้"
-          value="94.2%"
-          note="ดำเนินการแล้ว 81 จาก 86 งาน"
+          value={`${pmCompliance}%`}
+          note="ข้อมูลตัวอย่างเฉพาะไซต์ที่เลือก"
           tone="cyan"
         />
-        <KpiCard
-          icon="warning"
-          label="Alarm วิกฤต"
-          value={String(criticalAlerts.length)}
-          note="ต้องตอบสนองภายใน SLA"
-          tone="red"
-        />
+        {canOperate && (
+          <KpiCard
+            icon="warning"
+            label="Alarm วิกฤต"
+            value={String(criticalAlerts.length)}
+            note="ต้องตอบสนองภายใน SLA"
+            tone="red"
+          />
+        )}
         <KpiCard
           icon="asset"
           label="เครื่องจักรเฝ้าระวัง"
-          value="3"
-          note="จากตัวอย่างเครื่องจักร 6 รายการ"
+          value={String(watchedAssets.length)}
+          note={`จากเครื่องจักรตัวอย่าง ${siteAssets.length} รายการ`}
           tone="amber"
         />
       </section>
 
-      <section className="cmms-dashboard-grid">
-        <article className="cmms-panel cmms-work-panel">
-          <div className="cmms-panel-heading">
-            <div>
-              <span>WORK ORDERS</span>
-              <h3>ใบงานที่ต้องติดตาม</h3>
-            </div>
-            <button type="button" onClick={() => onNavigate("work-orders")}>
-              ดูทั้งหมด <Icon name="arrow" size={15} />
-            </button>
-          </div>
-          <WorkOrderTable orders={openOrders.slice(0, 4)} onSelect={onSelectOrder} />
-        </article>
-
-        <article className="cmms-panel cmms-alert-panel">
-          <div className="cmms-panel-heading">
-            <div>
-              <span>IOT EVENTS</span>
-              <h3>เหตุการณ์ล่าสุด</h3>
-            </div>
-            <button type="button" onClick={() => onNavigate("alerts")}>
-              ดูทั้งหมด <Icon name="arrow" size={15} />
-            </button>
-          </div>
-          <div className="cmms-alert-list">
-            {alerts.slice(0, 3).map((alert) => (
-              <div className="cmms-alert-item" key={alert.id}>
-                <span className={`cmms-alert-dot ${alert.level}`} />
-                <div>
-                  <strong>{alert.title}</strong>
-                  <p>{alert.assetId} • {alert.site}</p>
-                  <small>{alert.time}</small>
-                </div>
-                <b>{alert.value}</b>
+      {canOperate && (
+        <section className="cmms-dashboard-grid">
+          <article className="cmms-panel cmms-work-panel">
+            <div className="cmms-panel-heading">
+              <div>
+                <span>WORK ORDERS</span>
+                <h3>ใบงานที่ต้องติดตาม</h3>
               </div>
-            ))}
-          </div>
-        </article>
-      </section>
+              <button type="button" onClick={() => onNavigate("work-orders")}>
+                ดูทั้งหมด <Icon name="arrow" size={15} />
+              </button>
+            </div>
+            <WorkOrderTable orders={openOrders.slice(0, 4)} onSelect={onSelectOrder} />
+          </article>
+
+          <article className="cmms-panel cmms-alert-panel">
+            <div className="cmms-panel-heading">
+              <div>
+                <span>IOT EVENTS</span>
+                <h3>เหตุการณ์ล่าสุด</h3>
+              </div>
+              <button type="button" onClick={() => onNavigate("alerts")}>
+                ดูทั้งหมด <Icon name="arrow" size={15} />
+              </button>
+            </div>
+            <div className="cmms-alert-list">
+              {alerts.slice(0, 3).map((alert) => (
+                <div className="cmms-alert-item" key={alert.id}>
+                  <span className={`cmms-alert-dot ${alert.level}`} />
+                  <div>
+                    <strong>{alert.title}</strong>
+                    <p>{alert.assetId} • {alert.site}</p>
+                    <small>{alert.time}</small>
+                  </div>
+                  <b>{alert.value}</b>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+      )}
 
       <section className="cmms-dashboard-grid bottom">
         <article className="cmms-panel">
@@ -718,7 +744,7 @@ function DashboardPage({
             </button>
           </div>
           <div className="cmms-mini-schedule">
-            {pmSchedule.slice(0, 3).map((item) => (
+            {schedule.slice(0, 3).map((item) => (
               <div key={item.id}>
                 <time>
                   <strong>{item.date}</strong>
@@ -742,9 +768,11 @@ function DashboardPage({
               <span>ASSET HEALTH</span>
               <h3>สถานะเครื่องจักร</h3>
             </div>
-            <button type="button" onClick={() => onNavigate("assets")}>
-              ดูทะเบียน <Icon name="arrow" size={15} />
-            </button>
+            {canOperate && (
+              <button type="button" onClick={() => onNavigate("assets")}>
+                ดูทะเบียน <Icon name="arrow" size={15} />
+              </button>
+            )}
           </div>
           <div className="cmms-health-content">
             <div className="cmms-health-ring">
@@ -754,10 +782,10 @@ function DashboardPage({
               </div>
             </div>
             <div className="cmms-health-legend">
-              <p><i className="healthy" /><span>ปกติ</span><strong>3</strong></p>
-              <p><i className="watch" /><span>เฝ้าระวัง</span><strong>2</strong></p>
-              <p><i className="critical" /><span>วิกฤต</span><strong>1</strong></p>
-              <small>ข้อมูลตัวอย่างสำหรับต้นแบบระบบ</small>
+              <p><i className="healthy" /><span>ปกติ</span><strong>{siteAssets.filter((asset) => asset.health === "ปกติ").length}</strong></p>
+              <p><i className="watch" /><span>เฝ้าระวัง</span><strong>{siteAssets.filter((asset) => asset.health === "เฝ้าระวัง").length}</strong></p>
+              <p><i className="critical" /><span>วิกฤต</span><strong>{siteAssets.filter((asset) => asset.health === "วิกฤต").length}</strong></p>
+              <small>ข้อมูลตัวอย่างเฉพาะ Jobsite ที่เลือก</small>
             </div>
           </div>
         </article>
@@ -768,10 +796,12 @@ function DashboardPage({
 
 function WorkOrdersPage({
   orders,
+  canOperate,
   onSelect,
   onCreate,
 }: {
   orders: WorkOrder[];
+  canOperate: boolean;
   onSelect: (order: WorkOrder) => void;
   onCreate: () => void;
 }) {
@@ -827,10 +857,12 @@ function WorkOrdersPage({
             <Icon name="filter" size={17} />
             ตัวกรอง
           </button>
-          <button className="cmms-primary-button" type="button" onClick={onCreate}>
-            <Icon name="plus" size={17} />
-            สร้างใบงาน
-          </button>
+          {canOperate && (
+            <button className="cmms-primary-button" type="button" onClick={onCreate}>
+              <Icon name="plus" size={17} />
+              สร้างใบงาน
+            </button>
+          )}
         </div>
       </div>
       <WorkOrderTable orders={filtered} onSelect={onSelect} />
@@ -838,7 +870,7 @@ function WorkOrdersPage({
   );
 }
 
-function PMPage() {
+function PMPage({ schedule }: { schedule: PmItem[] }) {
   return (
     <div className="cmms-pm-layout">
       <section className="cmms-panel cmms-pm-summary">
@@ -876,7 +908,7 @@ function PMPage() {
           </button>
         </div>
         <div className="cmms-pm-list">
-          {pmSchedule.map((item) => (
+          {schedule.map((item) => (
             <article key={item.id}>
               <time>
                 <strong>{item.date}</strong>
@@ -904,12 +936,12 @@ function PMPage() {
   );
 }
 
-function AssetsPage() {
+function AssetsPage({ siteAssets }: { siteAssets: Asset[] }) {
   const [query, setQuery] = useState("");
   const [health, setHealth] = useState<"ทั้งหมด" | AssetHealth>("ทั้งหมด");
   const [selected, setSelected] = useState<Asset | null>(null);
 
-  const filtered = assets.filter((asset) => {
+  const filtered = siteAssets.filter((asset) => {
     const normalized = query.trim().toLowerCase();
     const matchesQuery =
       !normalized ||
@@ -922,9 +954,9 @@ function AssetsPage() {
       <section className="cmms-panel cmms-page-panel">
         <div className="cmms-list-toolbar">
           <div className="cmms-asset-stats">
-            <span><i className="healthy" />ปกติ <strong>3</strong></span>
-            <span><i className="watch" />เฝ้าระวัง <strong>2</strong></span>
-            <span><i className="critical" />วิกฤต <strong>1</strong></span>
+            <span><i className="healthy" />ปกติ <strong>{siteAssets.filter((asset) => asset.health === "ปกติ").length}</strong></span>
+            <span><i className="watch" />เฝ้าระวัง <strong>{siteAssets.filter((asset) => asset.health === "เฝ้าระวัง").length}</strong></span>
+            <span><i className="critical" />วิกฤต <strong>{siteAssets.filter((asset) => asset.health === "วิกฤต").length}</strong></span>
           </div>
           <div className="cmms-list-actions">
             <label className="cmms-inline-search">
@@ -1005,32 +1037,24 @@ function AssetsPage() {
   );
 }
 
-function SitesPage() {
-  const sites = [
-    { name: "โรงพยาบาลนพรัตนราชธานี", type: "โรงพยาบาล", assets: 186, open: 4, pm: "96%", contract: "31 ธ.ค. 2569" },
-    { name: "โรงพยาบาลกลาง", type: "โรงพยาบาล", assets: 142, open: 3, pm: "92%", contract: "30 ก.ย. 2569" },
-    { name: "โรงพยาบาลสิรินธร", type: "โรงพยาบาล", assets: 98, open: 1, pm: "98%", contract: "31 มี.ค. 2570" },
-    { name: "มหาวิทยาลัยธรรมศาสตร์", type: "มหาวิทยาลัย", assets: 76, open: 2, pm: "95%", contract: "31 ม.ค. 2570" },
-    { name: "โรงพยาบาลพญาไท 2", type: "โรงพยาบาล", assets: 114, open: 1, pm: "97%", contract: "30 มิ.ย. 2570" },
-    { name: "โรงพยาบาลพญาไท 3", type: "โรงพยาบาล", assets: 88, open: 2, pm: "94%", contract: "30 มิ.ย. 2570" },
-  ];
+function SitesPage({ sites }: { sites: Jobsite[] }) {
   return (
     <section className="cmms-site-grid">
-      {sites.map((site, index) => (
+      {sites.map((site) => (
         <article className="cmms-panel cmms-site-card" key={site.name}>
           <div className="cmms-site-card-top">
             <span><Icon name="building" size={22} /></span>
-            <small>SITE-{String(index + 1).padStart(3, "0")}</small>
+            <small>{site.id}</small>
           </div>
           <h3>{site.name}</h3>
           <p>{site.type} • สัญญาบริการ Active</p>
           <div className="cmms-site-metrics">
-            <span><small>เครื่องจักร</small><strong>{site.assets}</strong></span>
-            <span><small>ใบงานเปิด</small><strong>{site.open}</strong></span>
-            <span><small>PM Compliance</small><strong>{site.pm}</strong></span>
+            <span><small>เครื่องจักร</small><strong>{site.assetCount}</strong></span>
+            <span><small>ใบงานเปิด</small><strong>{site.openWorkOrders}</strong></span>
+            <span><small>PM Compliance</small><strong>{site.pmCompliance}%</strong></span>
           </div>
           <div className="cmms-site-footer">
-            <span>สัญญาถึง {site.contract}</span>
+            <span>{site.province}</span>
             <button type="button">ดูไซต์ <Icon name="arrow" size={15} /></button>
           </div>
         </article>
@@ -1041,10 +1065,12 @@ function SitesPage() {
 
 function AlertsPage({
   alerts,
+  canOperate,
   onAcknowledge,
   onCreateOrder,
 }: {
   alerts: AlertItem[];
+  canOperate: boolean;
   onAcknowledge: (id: string) => void;
   onCreateOrder: (alert: AlertItem) => void;
 }) {
@@ -1070,7 +1096,7 @@ function AlertsPage({
             </div>
             <strong className="cmms-event-value">{alert.value}</strong>
             <div className="cmms-event-actions">
-              {!alert.acknowledged ? (
+              {canOperate && !alert.acknowledged ? (
                 <>
                   <button className="cmms-secondary-button" type="button" onClick={() => onAcknowledge(alert.id)}>
                     รับทราบ
@@ -1079,8 +1105,10 @@ function AlertsPage({
                     สร้างใบงาน
                   </button>
                 </>
-              ) : (
+              ) : alert.acknowledged ? (
                 <span><Icon name="check" size={15} /> รับทราบแล้ว</span>
+              ) : (
+                <span>สิทธิ์ดูข้อมูล</span>
               )}
             </div>
           </article>
@@ -1090,7 +1118,7 @@ function AlertsPage({
   );
 }
 
-function ReportsPage() {
+function ReportsPage({ siteAssets }: { siteAssets: Asset[] }) {
   const bars = [72, 84, 78, 91, 88, 94];
   return (
     <div className="cmms-report-grid">
@@ -1127,7 +1155,7 @@ function ReportsPage() {
           <button type="button"><Icon name="download" size={16} /> ส่งออกรายงาน</button>
         </div>
         <div className="cmms-risk-list">
-          {assets.filter((asset) => asset.health !== "ปกติ").map((asset, index) => (
+          {siteAssets.filter((asset) => asset.health !== "ปกติ").map((asset, index) => (
             <div key={asset.id}>
               <span>{index + 1}</span>
               <p><strong>{asset.name}</strong><small>{asset.id} • {asset.site}</small></p>
@@ -1147,16 +1175,18 @@ function ReportsPage() {
 }
 
 function CreateWorkOrderModal({
+  siteAssets,
   onClose,
   onSubmit,
   presetAlert,
 }: {
+  siteAssets: Asset[];
   onClose: () => void;
   onSubmit: (order: WorkOrder) => void;
   presetAlert: AlertItem | null;
 }) {
-  const [assetId, setAssetId] = useState(presetAlert?.assetId ?? assets[0].id);
-  const selectedAsset = assets.find((asset) => asset.id === assetId) ?? assets[0];
+  const [assetId, setAssetId] = useState(presetAlert?.assetId ?? siteAssets[0].id);
+  const selectedAsset = siteAssets.find((asset) => asset.id === assetId) ?? siteAssets[0];
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1217,7 +1247,7 @@ function CreateWorkOrderModal({
           <label>
             เครื่องจักร
             <select value={assetId} onChange={(event) => setAssetId(event.target.value)}>
-              {assets.map((asset) => (
+              {siteAssets.map((asset) => (
                 <option key={asset.id} value={asset.id}>{asset.id} — {asset.name}</option>
               ))}
             </select>
@@ -1258,14 +1288,18 @@ function CreateWorkOrderModal({
 
 function WorkOrderDrawer({
   order,
+  siteAssets,
+  canOperate,
   onClose,
   onUpdateStatus,
 }: {
   order: WorkOrder;
+  siteAssets: Asset[];
+  canOperate: boolean;
   onClose: () => void;
   onUpdateStatus: (id: string, status: WorkStatus) => void;
 }) {
-  const asset = assets.find((item) => item.id === order.assetId);
+  const asset = siteAssets.find((item) => item.id === order.assetId);
   const nextAction =
     order.status === "รอมอบหมาย"
       ? { label: "เริ่มดำเนินการ", status: "กำลังดำเนินการ" as WorkStatus }
@@ -1311,20 +1345,34 @@ function WorkOrderDrawer({
             {order.progress > 0 && <p><i /><span><strong>อัปเดตผลการดำเนินงาน {order.progress}%</strong><small>วันนี้ 10:12 • {order.assignee}</small></span></p>}
           </div>
         </div>
-        <div className="cmms-drawer-actions">
-          <button className="cmms-secondary-button" type="button">เพิ่มบันทึก</button>
-          {nextAction && (
-            <button className="cmms-primary-button" type="button" onClick={() => onUpdateStatus(order.id, nextAction.status)}>
-              <Icon name="check" size={17} />{nextAction.label}
-            </button>
-          )}
-        </div>
+        {canOperate && (
+          <div className="cmms-drawer-actions">
+            <button className="cmms-secondary-button" type="button">เพิ่มบันทึก</button>
+            {nextAction && (
+              <button className="cmms-primary-button" type="button" onClick={() => onUpdateStatus(order.id, nextAction.status)}>
+                <Icon name="check" size={17} />{nextAction.label}
+              </button>
+            )}
+          </div>
+        )}
       </aside>
     </div>
   );
 }
 
-function UserProfileModal({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
+function UserProfileModal({
+  user,
+  activeJobsite,
+  allowedJobsiteCount,
+  onClose,
+  onLogout,
+}: {
+  user: DemoUser;
+  activeJobsite: Jobsite;
+  allowedJobsiteCount: number;
+  onClose: () => void;
+  onLogout: () => void;
+}) {
   return (
     <div className="cmms-modal-backdrop" onMouseDown={onClose}>
       <section
@@ -1335,21 +1383,22 @@ function UserProfileModal({ onClose, onLogout }: { onClose: () => void; onLogout
         role="dialog"
       >
         <div className="cmms-user-profile-heading">
-          <div className="cmms-user-profile-avatar">สส</div>
+          <div className="cmms-user-profile-avatar">{user.initials}</div>
           <div>
             <span>USER PROFILE</span>
-            <h2 id="cmms-user-profile-title">สิทธา สายสวรรค์</h2>
-            <p>Service Manager</p>
+            <h2 id="cmms-user-profile-title">{user.displayName}</h2>
+            <p>{user.title}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="ปิดข้อมูลผู้ใช้งาน">
             <Icon name="close" size={20} />
           </button>
         </div>
         <dl className="cmms-user-profile-details">
-          <div><dt>ชื่อเข้าสู่ระบบ</dt><dd>admin</dd></div>
-          <div><dt>บทบาท</dt><dd>Service Manager</dd></div>
-          <div><dt>สิทธิ์การใช้งาน</dt><dd>System Administrator</dd></div>
-          <div><dt>พื้นที่ดูแล</dt><dd>ทุกไซต์ (85 ไซต์)</dd></div>
+          <div><dt>ชื่อเข้าสู่ระบบ</dt><dd>{user.username}</dd></div>
+          <div><dt>บทบาท</dt><dd>{roleLabels[user.role]}</dd></div>
+          <div><dt>สิทธิ์การใช้งาน</dt><dd>{user.title}</dd></div>
+          <div><dt>ไซต์ปัจจุบัน</dt><dd>{activeJobsite.name}</dd></div>
+          <div><dt>พื้นที่ที่เข้าถึงได้</dt><dd>{allowedJobsiteCount} Jobsite</dd></div>
           <div><dt>สถานะบัญชี</dt><dd><span><i />ใช้งานอยู่</span></dd></div>
         </dl>
         <div className="cmms-user-profile-actions">
@@ -1363,7 +1412,19 @@ function UserProfileModal({ onClose, onLogout }: { onClose: () => void; onLogout
   );
 }
 
-export default function CMMSApp() {
+export default function CMMSApp({
+  currentUser,
+  activeJobsite,
+  allowedJobsites,
+  onChangeJobsite,
+  onLogout,
+}: {
+  currentUser: DemoUser;
+  activeJobsite: Jobsite;
+  allowedJobsites: Jobsite[];
+  onChangeJobsite: () => void;
+  onLogout: () => void;
+}) {
   const [activePage, setActivePage] = useState<Page>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [workOrders, setWorkOrders] = useState(initialWorkOrders);
@@ -1415,22 +1476,14 @@ export default function CMMSApp() {
   const logout = () => {
     setProfileMenuOpen(false);
     setProfileModalOpen(false);
-
-    if (window.parent !== window) {
-      window.parent.postMessage(
-        { type: "thaicon-cmms-logout-request" },
-        window.location.origin,
-      );
-      return;
-    }
-
-    window.location.assign(
-      import.meta.env.VITE_CMMS_LOGIN_URL ??
-        "https://thaicon-cmms-review.daril186473.chatgpt.site/?login=1",
-    );
+    onLogout();
   };
 
   const navigate = (page: Page) => {
+    if (!pagesByRole[currentUser.role].includes(page)) {
+      setToast("บัญชีนี้ไม่มีสิทธิ์เปิดเมนูดังกล่าว");
+      return;
+    }
     setActivePage(page);
     setSidebarOpen(false);
     setGlobalSearch("");
@@ -1488,7 +1541,18 @@ export default function CMMSApp() {
     setCreateOpen(true);
   };
 
-  const currentPage = pageTitles[activePage];
+  const allowedPages = pagesByRole[currentUser.role];
+  const visibleNavItems = navItems.filter((item) => allowedPages.includes(item.id));
+  const canOperate = currentUser.role !== "user";
+  const scopedWorkOrders = workOrders.filter((order) => order.site === activeJobsite.name);
+  const scopedAlerts = alerts.filter((alert) => alert.site === activeJobsite.name);
+  const scopedAssets = assets.filter((asset) => asset.site === activeJobsite.name);
+  const scopedSchedule = pmSchedule.filter((item) => item.site === activeJobsite.name);
+  const pageMeta = pageTitles[activePage];
+  const currentPage = {
+    ...pageMeta,
+    subtitle: `${pageMeta.subtitle} • ${activeJobsite.name}`,
+  };
 
   return (
     <main className="cmms-shell">
@@ -1499,7 +1563,7 @@ export default function CMMSApp() {
         </a>
         <div className="cmms-sidebar-caption">OPERATIONS</div>
         <nav>
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <button
               className={activePage === item.id ? "active" : ""}
               key={item.id}
@@ -1508,18 +1572,18 @@ export default function CMMSApp() {
             >
               <Icon name={item.icon} size={19} />
               <span>{item.label}</span>
-              {item.id === "alerts" && alerts.filter((alert) => !alert.acknowledged).length > 0 && (
-                <em>{alerts.filter((alert) => !alert.acknowledged).length}</em>
+              {item.id === "alerts" && scopedAlerts.filter((alert) => !alert.acknowledged).length > 0 && (
+                <em>{scopedAlerts.filter((alert) => !alert.acknowledged).length}</em>
               )}
             </button>
           ))}
         </nav>
         <div className="cmms-sidebar-bottom">
-          <div className="cmms-cloud-status">
-            <span><i />IoT Gateway</span>
-            <strong>Online</strong>
-            <small>อัปเดตล่าสุด 10:32</small>
-          </div>
+          <button className="cmms-active-jobsite" type="button" onClick={onChangeJobsite}>
+            <span><i />JOBSITE ปัจจุบัน</span>
+            <strong>{activeJobsite.name}</strong>
+            <small>{activeJobsite.id} • เปลี่ยนไซต์</small>
+          </button>
           <a href="#home"><Icon name="logout" size={18} /><span>กลับเว็บไซต์หลัก</span></a>
         </div>
       </aside>
@@ -1544,10 +1608,12 @@ export default function CMMSApp() {
               />
               <kbd>⌘ K</kbd>
             </label>
-            <button className="cmms-notification" type="button" aria-label="การแจ้งเตือน">
-              <Icon name="bell" size={20} />
-              <i>{alerts.filter((alert) => !alert.acknowledged).length}</i>
-            </button>
+            {canOperate && (
+              <button className="cmms-notification" type="button" aria-label="การแจ้งเตือน">
+                <Icon name="bell" size={20} />
+                <i>{scopedAlerts.filter((alert) => !alert.acknowledged).length}</i>
+              </button>
+            )}
             <div className="cmms-user-menu-wrap" ref={profileMenuRef}>
               <button
                 aria-expanded={profileMenuOpen}
@@ -1557,15 +1623,15 @@ export default function CMMSApp() {
                 type="button"
                 onClick={() => setProfileMenuOpen((current) => !current)}
               >
-                <span>สส</span>
-                <p><strong>สิทธา สายสวรรค์</strong><small>Service Manager</small></p>
+                <span>{currentUser.initials}</span>
+                <p><strong>{currentUser.displayName}</strong><small>{roleLabels[currentUser.role]}</small></p>
                 <Icon name="arrow" size={14} />
               </button>
               {profileMenuOpen && (
                 <div className="cmms-user-menu" role="menu">
                   <div className="cmms-user-menu-summary">
-                    <span>สส</span>
-                    <p><strong>สิทธา สายสวรรค์</strong><small>admin • System Administrator</small></p>
+                    <span>{currentUser.initials}</span>
+                    <p><strong>{currentUser.displayName}</strong><small>{currentUser.username} • {currentUser.title}</small></p>
                   </div>
                   <button
                     type="button"
@@ -1601,22 +1667,27 @@ export default function CMMSApp() {
         <div className="cmms-content">
           {activePage === "dashboard" && (
             <DashboardPage
-              alerts={alerts}
-              orders={workOrders}
+              alerts={scopedAlerts}
+              orders={scopedWorkOrders}
+              schedule={scopedSchedule}
+              siteAssets={scopedAssets}
+              pmCompliance={activeJobsite.pmCompliance}
+              canOperate={canOperate}
               onCreate={() => setCreateOpen(true)}
               onNavigate={navigate}
               onSelectOrder={setSelectedOrder}
             />
           )}
           {activePage === "work-orders" && (
-            <WorkOrdersPage orders={workOrders} onSelect={setSelectedOrder} onCreate={() => setCreateOpen(true)} />
+            <WorkOrdersPage orders={scopedWorkOrders} canOperate={canOperate} onSelect={setSelectedOrder} onCreate={() => setCreateOpen(true)} />
           )}
-          {activePage === "pm" && <PMPage />}
-          {activePage === "assets" && <AssetsPage />}
-          {activePage === "sites" && <SitesPage />}
+          {activePage === "pm" && <PMPage schedule={scopedSchedule} />}
+          {activePage === "assets" && <AssetsPage siteAssets={scopedAssets} />}
+          {activePage === "sites" && <SitesPage sites={allowedJobsites} />}
           {activePage === "alerts" && (
             <AlertsPage
-              alerts={alerts}
+              alerts={scopedAlerts}
+              canOperate={canOperate}
               onAcknowledge={(id) => {
                 setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, acknowledged: true } : alert));
                 setToast(`รับทราบ Alarm ${id} แล้ว`);
@@ -1624,13 +1695,14 @@ export default function CMMSApp() {
               onCreateOrder={openOrderFromAlert}
             />
           )}
-          {activePage === "reports" && <ReportsPage />}
-          {activePage === "iot" && <IoTMonitor searchTerm={globalSearch} onNotify={setToast} />}
+          {activePage === "reports" && <ReportsPage siteAssets={scopedAssets} />}
+          {activePage === "iot" && <IoTMonitor jobsiteId={activeJobsite.id} searchTerm={globalSearch} onNotify={setToast} />}
         </div>
       </div>
 
-      {createOpen && (
+      {createOpen && canOperate && scopedAssets.length > 0 && (
         <CreateWorkOrderModal
+          siteAssets={scopedAssets}
           onClose={() => {
             setCreateOpen(false);
             setPresetAlert(null);
@@ -1642,12 +1714,20 @@ export default function CMMSApp() {
       {selectedOrder && (
         <WorkOrderDrawer
           order={selectedOrder}
+          siteAssets={scopedAssets}
+          canOperate={canOperate}
           onClose={() => setSelectedOrder(null)}
           onUpdateStatus={updateOrderStatus}
         />
       )}
       {profileModalOpen && (
-        <UserProfileModal onClose={() => setProfileModalOpen(false)} onLogout={logout} />
+        <UserProfileModal
+          user={currentUser}
+          activeJobsite={activeJobsite}
+          allowedJobsiteCount={allowedJobsites.length}
+          onClose={() => setProfileModalOpen(false)}
+          onLogout={logout}
+        />
       )}
       {toast && <div className="cmms-toast"><Icon name="check" size={18} />{toast}</div>}
     </main>

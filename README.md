@@ -5,12 +5,25 @@
 ## ฟังก์ชันปัจจุบัน
 
 - Dashboard งานบำรุงรักษา
+- Demo Login และ Session persistence
+- เลือก Jobsite ตามสิทธิ์ Admin, Engineer และ User
+- กรอง Work Order, Alarm, PM, Asset และ IoT ตาม Jobsite ที่เลือก
 - Work Order และ Alarm workflow
 - แผน PM
 - ทะเบียนเครื่องจักรและไซต์ลูกค้า
 - IoT Monitor และ Telemetry แบบข้อมูลจำลอง
 - User profile และ Logout integration
 - Responsive UI สำหรับ Desktop และ Mobile
+
+## บัญชีสำหรับทดสอบ
+
+| บทบาท | ชื่อผู้ใช้งาน | รหัสผ่าน | Jobsite ที่เข้าถึงได้ |
+| --- | --- | --- | --- |
+| Admin | `admin` | `demo123` | ทุกไซต์ในข้อมูลตัวอย่าง |
+| Engineer | `engineer` | `demo123` | SITE-001 และ SITE-002 |
+| User | `user` | `demo123` | SITE-001 แบบ Viewer |
+
+ระบบ Login ปัจจุบันเป็น demo authentication ฝั่ง Frontend เพื่อทดสอบหน้าจอและสิทธิ์เบื้องต้น ยังไม่ใช่ระบบรักษาความปลอดภัยสำหรับ Production
 
 ## เริ่มต้นพัฒนา
 
@@ -22,6 +35,7 @@ npm run dev
 ตรวจ production build:
 
 ```bash
+npm run typecheck
 npm run build
 ```
 

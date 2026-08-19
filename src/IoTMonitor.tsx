@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Health = "healthy" | "warning" | "critical" | "offline";
 type Connection = "online" | "stale" | "offline";
@@ -164,13 +164,15 @@ function TelemetryDrawer({ asset, onClose }: { asset: IotAsset; onClose: () => v
 }
 
 export default function IoTMonitor({
+  jobsiteId,
   searchTerm,
   onNotify,
 }: {
+  jobsiteId: string;
   searchTerm: string;
   onNotify: (message: string) => void;
 }) {
-  const [activeSiteId, setActiveSiteId] = useState("SITE-001");
+  const [activeSiteId, setActiveSiteId] = useState(jobsiteId);
   const [siteFilter, setSiteFilter] = useState<"all" | "issue" | "offline">("all");
   const [alarms, setAlarms] = useState(initialAlarms);
   const [selectedAsset, setSelectedAsset] = useState<IotAsset | null>(null);
@@ -179,21 +181,24 @@ export default function IoTMonitor({
   const matches = (...values: Array<string | undefined>) =>
     !query || values.some((value) => value?.toLocaleLowerCase("th").includes(query));
 
-  const filteredSites = sites.filter((site) => {
+  useEffect(() => setActiveSiteId(jobsiteId), [jobsiteId]);
+
+  const scopedSites = sites.filter((site) => site.id === jobsiteId);
+  const filteredSites = scopedSites.filter((site) => {
     const filterMatch =
       siteFilter === "all" ||
       (siteFilter === "issue" && ["warning", "critical"].includes(site.status)) ||
       (siteFilter === "offline" && site.status === "offline");
     return filterMatch && matches(site.id, site.name, site.province, site.type);
   });
-  const activeSite = sites.find((site) => site.id === activeSiteId) ?? sites[0];
+  const activeSite = scopedSites.find((site) => site.id === activeSiteId) ?? scopedSites[0];
   const visibleAssets = assets.filter(
     (asset) =>
       asset.siteId === activeSite.id &&
       matches(asset.id, asset.name, asset.type, asset.location, activeSite.name),
   );
   const visibleAlarms = alarms.filter((alarm) =>
-    matches(alarm.id, alarm.assetId, alarm.title, alarm.detail),
+    alarm.siteId === activeSite.id && matches(alarm.id, alarm.assetId, alarm.title, alarm.detail),
   );
 
   const energyBars = Array.from({ length: 18 }, (_, index) => {
@@ -217,8 +222,8 @@ export default function IoTMonitor({
       <div className="iot-toolbar">
         <div>
           <span>IOT OPERATIONS • DEMO DATA ADAPTER</span>
-          <h2>ศูนย์ติดตามอุปกรณ์ทุกไซต์</h2>
-          <p>แยกสถานะการเชื่อมต่อออกจากสุขภาพเครื่องจักร เพื่อให้ทีมตอบสนองได้ถูกจุด</p>
+          <h2>ศูนย์ติดตามอุปกรณ์ — {activeSite.name}</h2>
+          <p>แสดงข้อมูลเฉพาะ Jobsite ที่เลือกและบัญชีนี้ได้รับอนุญาต</p>
         </div>
         <div className="iot-toolbar-actions">
           <small><i /> อัปเดตล่าสุด {lastUpdated.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</small>
@@ -227,16 +232,16 @@ export default function IoTMonitor({
       </div>
 
       <section className="iot-kpi-grid" aria-label="ตัวชี้วัด IoT">
-        <article className="iot-kpi green"><span>ไซต์เชื่อมต่อปกติ</span><strong>81/85</strong><small>4 ไซต์ต้องตรวจสอบการเชื่อมต่อ</small><em>95% ONLINE</em></article>
-        <article className="iot-kpi blue"><span>อุปกรณ์กำลังส่งข้อมูล</span><strong>2,917</strong><small>จากทั้งหมด 2,985 อุปกรณ์</small><em>97.7% REPORTING</em></article>
-        <article className="iot-kpi amber"><span>Gateway Online</span><strong>83/87</strong><small>4 Gateway ขาด Heartbeat</small><em>MQTT/TLS</em></article>
-        <article className="iot-kpi red"><span>Alarm ที่ยังเปิดอยู่</span><strong>15</strong><small>3 Critical • 12 Warning</small><em>ต้องติดตาม</em></article>
+        <article className="iot-kpi green"><span>สถานะไซต์</span><strong>{statusLabels[activeSite.status]}</strong><small>{activeSite.id} • {activeSite.lastSeen}</small><em>JOBSITE SCOPE</em></article>
+        <article className="iot-kpi blue"><span>อุปกรณ์กำลังส่งข้อมูล</span><strong>{activeSite.reportingDevices}</strong><small>จากทั้งหมด {activeSite.totalDevices} อุปกรณ์</small><em>{Math.round((activeSite.reportingDevices / activeSite.totalDevices) * 100)}% REPORTING</em></article>
+        <article className="iot-kpi amber"><span>Gateway Online</span><strong>{activeSite.gatewayOnline}/{activeSite.gatewayTotal}</strong><small>ข้อมูลเฉพาะไซต์ที่เลือก</small><em>MQTT/TLS</em></article>
+        <article className="iot-kpi red"><span>Alarm ที่ยังเปิดอยู่</span><strong>{visibleAlarms.filter((alarm) => !alarm.acknowledged).length}</strong><small>{visibleAlarms.filter((alarm) => alarm.severity === "critical" && !alarm.acknowledged).length} Critical • {visibleAlarms.filter((alarm) => alarm.severity === "warning" && !alarm.acknowledged).length} Warning</small><em>ต้องติดตาม</em></article>
       </section>
 
       <div className="iot-grid primary">
         <section className="iot-panel">
           <div className="iot-panel-heading">
-            <div><span>SITE HEALTH</span><h3>สถานะการเชื่อมต่อทุกไซต์</h3></div>
+            <div><span>SITE HEALTH</span><h3>สถานะการเชื่อมต่อไซต์ที่เลือก</h3></div>
             <div className="iot-filter-group" aria-label="กรองสถานะไซต์">
               <button className={siteFilter === "all" ? "active" : ""} type="button" onClick={() => setSiteFilter("all")}>ทั้งหมด</button>
               <button className={siteFilter === "issue" ? "active" : ""} type="button" onClick={() => setSiteFilter("issue")}>ต้องติดตาม</button>
@@ -291,7 +296,7 @@ export default function IoTMonitor({
         </section>
 
         <section className="iot-panel">
-          <div className="iot-panel-heading"><div><span>ACTIVE EVENTS</span><h3>Alarm ที่ต้องติดตาม</h3></div><small>{alarms.filter((alarm) => !alarm.acknowledged).length} รายการใหม่</small></div>
+          <div className="iot-panel-heading"><div><span>ACTIVE EVENTS</span><h3>Alarm ที่ต้องติดตาม</h3></div><small>{visibleAlarms.filter((alarm) => !alarm.acknowledged).length} รายการใหม่</small></div>
           <div className="iot-alarm-list">
             {visibleAlarms.map((alarm) => (
               <article className={`iot-alarm-item ${alarm.acknowledged ? "acknowledged" : ""}`} key={alarm.id}>

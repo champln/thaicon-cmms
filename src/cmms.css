@@ -172,20 +172,27 @@
   gap: 8px;
 }
 
-.cmms-cloud-status {
+.cmms-cloud-status,
+.cmms-active-jobsite {
+  width: 100%;
   padding: 13px;
   border: 1px solid rgba(103, 156, 209, 0.18);
   border-radius: 8px;
+  text-align: left;
   background: rgba(10, 42, 75, 0.64);
 }
 
 .cmms-cloud-status span,
 .cmms-cloud-status strong,
-.cmms-cloud-status small {
+.cmms-cloud-status small,
+.cmms-active-jobsite span,
+.cmms-active-jobsite strong,
+.cmms-active-jobsite small {
   display: block;
 }
 
-.cmms-cloud-status span {
+.cmms-cloud-status span,
+.cmms-active-jobsite span {
   color: #92a9c0;
   font-family: Arial, sans-serif;
   font-size: 9px;
@@ -193,7 +200,8 @@
   letter-spacing: 0.07em;
 }
 
-.cmms-cloud-status span i {
+.cmms-cloud-status span i,
+.cmms-active-jobsite span i {
   display: inline-block;
   width: 7px;
   height: 7px;
@@ -203,16 +211,33 @@
   box-shadow: 0 0 0 4px rgba(45, 206, 135, 0.1);
 }
 
-.cmms-cloud-status strong {
+.cmms-cloud-status strong,
+.cmms-active-jobsite strong {
   margin: 7px 0 2px;
   color: #42d995;
-  font-family: Arial, sans-serif;
   font-size: 12px;
 }
 
-.cmms-cloud-status small {
+.cmms-cloud-status small,
+.cmms-active-jobsite small {
   color: #647f9d;
   font-size: 9px;
+}
+
+.cmms-active-jobsite {
+  cursor: pointer;
+}
+
+.cmms-active-jobsite:hover {
+  border-color: rgba(65, 190, 224, 0.38);
+  background: rgba(14, 55, 94, 0.78);
+}
+
+.cmms-active-jobsite strong {
+  overflow: hidden;
+  color: #e8f6ff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cmms-sidebar-bottom > a {
@@ -650,6 +675,10 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+}
+
+.cmms-kpi-grid.viewer {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .cmms-kpi {
@@ -2859,6 +2888,10 @@
 }
 
 @media (max-width: 680px) {
+  .cmms-kpi-grid.viewer {
+    grid-template-columns: 1fr;
+  }
+
   .cmms-topbar {
     min-height: 65px;
     padding: 10px 14px;
@@ -3128,12 +3161,15 @@
   .cmms-sidebar-caption,
   .cmms-cloud-status span,
   .cmms-cloud-status small,
+  .cmms-active-jobsite span,
+  .cmms-active-jobsite small,
   .cmms-demo-note,
   .cmms-demo-note span {
     font-size: 14px;
   }
 
   .cmms-cloud-status strong,
+  .cmms-active-jobsite strong,
   .cmms-sidebar-bottom > a {
     font-size: 16px;
   }
