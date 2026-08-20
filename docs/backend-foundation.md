@@ -1,6 +1,6 @@
 # Backend Foundation
 
-This repository now includes the first Supabase migration for authentication profiles and Jobsite access. It does not yet connect the public frontend to Supabase; the current Login remains an explicitly labeled demo adapter until a project and environment values are supplied.
+This repository includes the first Supabase migration for authentication profiles and Jobsite access. The frontend now has a Supabase Auth adapter and falls back to the existing demo accounts when environment values are not supplied.
 
 ## Included schema
 
@@ -34,7 +34,22 @@ Workflow tables such as plans, work orders, Service Reports, and repair requests
 - Disabled profiles cannot gain Jobsite access.
 - Browser code never receives a Supabase service-role key.
 
+## Frontend Auth adapter
+
+The adapter reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. For local development, copy `.env.example` to `.env.local`. For GitHub Pages, configure both names as GitHub repository variables.
+
+When configured, the frontend:
+
+- authenticates with Supabase email/password Auth;
+- restores the persisted Supabase session;
+- loads the signed-in user's `profiles` row;
+- loads only Jobsites allowed by RLS;
+- signs out through Supabase Auth;
+- hides the source-controlled demo account shortcuts.
+
+The publishable key is designed for browser use and remains constrained by RLS. Never expose a `service_role` or secret key through a `VITE_` variable.
+
 ## Next integration batch
 
-The next backend batch will add a Supabase client adapter behind the existing Login and Jobsite selector. It requires the Development project URL and publishable/anonymous key. Production credentials must remain in deployment secrets and local `.env` files, not in Git.
+Create the Development Supabase project, apply the migration and seed, create Auth users, and assign their Jobsite access. Workflow tables remain deferred until the customer confirms the end-to-end process.
 

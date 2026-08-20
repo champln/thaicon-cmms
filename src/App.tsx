@@ -9,6 +9,13 @@ import {
   roleLabels,
 } from "./access";
 import type { DemoUser, Jobsite } from "./access";
+import { isSupabaseConfigured, supabase } from "./supabase";
+import {
+  restoreSupabaseAccess,
+  signInWithSupabase,
+  signOutFromSupabase,
+  SupabaseAccessError,
+} from "./supabase-auth";
 import "./access.css";
 
 const STORAGE_KEY = "thaicon-cmms-demo-session-v1";
@@ -33,24 +40,41 @@ function readStoredSession(): StoredSession | null {
   }
 }
 
-function LoginPage({ onLogin }: { onLogin: (user: DemoUser) => void }) {
-  const [username, setUsername] = useState("");
+function LoginPage({
+  initialError,
+  onLogin,
+  useSupabase,
+}: {
+  initialError: string;
+  onLogin: (identifier: string, password: string) => Promise<void>;
+  useSupabase: boolean;
+}) {
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError);
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const user = authenticateDemoUser(username, password);
-    if (!user) {
-      setError("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");
-      return;
-    }
+    setSubmitting(true);
     setError("");
-    onLogin(user);
+    try {
+      await onLogin(identifier, password);
+    } catch (loginError) {
+      setError(
+        loginError instanceof SupabaseAccessError
+          ? loginError.userMessage
+          : loginError instanceof Error
+            ? loginError.message
+            : "เข้าสู่ระบบไม่สำเร็จ",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const useDemoAccount = (user: DemoUser) => {
-    setUsername(user.username);
+    setIdentifier(user.username);
     setPassword(user.password);
     setError("");
   };
@@ -81,14 +105,15 @@ function LoginPage({ onLogin }: { onLogin: (user: DemoUser) => void }) {
 
           <form onSubmit={submit}>
             <label>
-              ชื่อผู้ใช้งาน
+              {useSupabase ? "อีเมล" : "ชื่อผู้ใช้งาน"}
               <input
-                autoComplete="username"
+                autoComplete={useSupabase ? "email" : "username"}
                 autoFocus
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                placeholder="เช่น admin"
+                value={identifier}
+                onChange={(event) => setIdentifier(event.target.value)}
+                placeholder={useSupabase ? "name@company.com" : "เช่น admin"}
                 required
+                type={useSupabase ? "email" : "text"}
               />
             </label>
             <label>
@@ -103,22 +128,28 @@ function LoginPage({ onLogin }: { onLogin: (user: DemoUser) => void }) {
               />
             </label>
             {error && <div className="access-error" role="alert">{error}</div>}
-            <button className="access-submit" type="submit">เข้าสู่ระบบ <span>→</span></button>
+            <button className="access-submit" disabled={submitting} type="submit">
+              {submitting ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"} <span>→</span>
+            </button>
           </form>
 
-          <div className="access-demo-accounts">
-            <div><span>บัญชีทดสอบ</span><small>รหัสผ่านทุกบัญชี: demo123</small></div>
-            <div className="access-demo-grid">
-              {demoUsers.map((user) => (
-                <button type="button" key={user.id} onClick={() => useDemoAccount(user)}>
-                  <span>{user.initials}</span>
-                  <p><strong>{roleLabels[user.role]}</strong><small>{user.username}</small></p>
-                </button>
-              ))}
+          {!useSupabase && (
+            <div className="access-demo-accounts">
+              <div><span>บัญชีทดสอบ</span><small>รหัสผ่านทุกบัญชี: demo123</small></div>
+              <div className="access-demo-grid">
+                {demoUsers.map((user) => (
+                  <button type="button" key={user.id} onClick={() => useDemoAccount(user)}>
+                    <span>{user.initials}</span>
+                    <p><strong>{roleLabels[user.role]}</strong><small>{user.username}</small></p>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
-        <small className="access-footer">ระบบทดสอบ • ข้อมูลจำลอง</small>
+        <small className="access-footer">
+          {useSupabase ? "SUPABASE AUTHENTICATION" : "ระบบทดสอบ • ข้อมูลจำลอง"}
+        </small>
       </section>
     </main>
   );
@@ -172,22 +203,77 @@ function JobsiteSelector({
             </button>
           ))}
         </div>
+        {sites.length === 0 && (
+          <div className="site-select-empty">บัญชีนี้ยังไม่ได้รับสิทธิ์เข้าไซต์</div>
+        )}
       </section>
     </main>
   );
 }
 
 export default function App() {
-  const initialSession = useMemo(readStoredSession, []);
+  const initialSession = useMemo(
+    () => isSupabaseConfigured ? null : readStoredSession(),
+    [],
+  );
   const [user, setUser] = useState<DemoUser | null>(() =>
     initialSession ? getUserById(initialSession.userId) : null,
   );
   const [jobsiteId, setJobsiteId] = useState<string | null>(initialSession?.jobsiteId ?? null);
+  const [supabaseSites, setSupabaseSites] = useState<Jobsite[]>([]);
+  const [authLoading, setAuthLoading] = useState(isSupabaseConfigured);
+  const [authError, setAuthError] = useState("");
 
-  const allowedSites = useMemo(() => user ? getJobsitesForUser(user) : [], [user]);
+  const allowedSites = useMemo(
+    () => isSupabaseConfigured
+      ? supabaseSites
+      : user
+        ? getJobsitesForUser(user)
+        : [],
+    [supabaseSites, user],
+  );
   const selectedSite = allowedSites.find((site) => site.id === jobsiteId) ?? null;
 
   useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    let active = true;
+    restoreSupabaseAccess()
+      .then((access) => {
+        if (!active || !access) return;
+        setUser(access.user);
+        setSupabaseSites(access.sites);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setAuthError(
+          error instanceof SupabaseAccessError
+            ? error.userMessage
+            : "ไม่สามารถตรวจสอบสถานะการเข้าสู่ระบบได้",
+        );
+      })
+      .finally(() => {
+        if (active) setAuthLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_OUT") return;
+      setUser(null);
+      setSupabaseSites([]);
+      setJobsiteId(null);
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (isSupabaseConfigured) return;
     if (!user) {
       window.localStorage.removeItem(STORAGE_KEY);
       return;
@@ -199,17 +285,69 @@ export default function App() {
     window.scrollTo({ top: 0, left: 0 });
   }, [jobsiteId, user?.id]);
 
-  const logout = () => {
-    setUser(null);
+  const login = async (identifier: string, password: string) => {
+    setAuthError("");
+    if (isSupabaseConfigured) {
+      const access = await signInWithSupabase(identifier, password);
+      setUser(access.user);
+      setSupabaseSites(access.sites);
+      setJobsiteId(null);
+      return;
+    }
+
+    const demoUser = authenticateDemoUser(identifier, password);
+    if (!demoUser) {
+      throw new Error("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");
+    }
+    setUser(demoUser);
     setJobsiteId(null);
   };
 
+  const logout = async () => {
+    if (isSupabaseConfigured) {
+      try {
+        await signOutFromSupabase();
+      } catch (error) {
+        setAuthError(
+          error instanceof SupabaseAccessError
+            ? error.userMessage
+            : "ออกจากระบบไม่สำเร็จ",
+        );
+      }
+    }
+    setUser(null);
+    setSupabaseSites([]);
+    setJobsiteId(null);
+  };
+
+  if (authLoading) {
+    return (
+      <main className="access-loading" aria-live="polite">
+        <strong>ThaiCon CMMS</strong>
+        <span>กำลังตรวจสอบการเข้าสู่ระบบ...</span>
+      </main>
+    );
+  }
+
   if (!user) {
-    return <LoginPage onLogin={(nextUser) => { setUser(nextUser); setJobsiteId(null); }} />;
+    return (
+      <LoginPage
+        initialError={authError}
+        onLogin={login}
+        useSupabase={isSupabaseConfigured}
+      />
+    );
   }
 
   if (!selectedSite) {
-    return <JobsiteSelector user={user} sites={allowedSites} onSelect={(site) => setJobsiteId(site.id)} onLogout={logout} />;
+    return (
+      <JobsiteSelector
+        user={user}
+        sites={allowedSites}
+        onSelect={(site) => setJobsiteId(site.id)}
+        onLogout={() => void logout()}
+      />
+    );
   }
 
   return (
@@ -218,7 +356,7 @@ export default function App() {
       allowedJobsites={allowedSites}
       currentUser={user}
       onChangeJobsite={() => setJobsiteId(null)}
-      onLogout={logout}
+      onLogout={() => void logout()}
     />
   );
 }

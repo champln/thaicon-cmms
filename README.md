@@ -5,7 +5,7 @@
 ## ฟังก์ชันปัจจุบัน
 
 - Dashboard งานบำรุงรักษา
-- Demo Login และ Session persistence
+- Supabase Auth adapter พร้อม Demo Login fallback
 - เลือก Jobsite ตามสิทธิ์ Admin, Engineer และ User
 - กรอง Work Order, Alarm, PM, Asset และ IoT ตาม Jobsite ที่เลือก
 - Work Order และ Alarm workflow
@@ -15,7 +15,7 @@
 - User profile และ Logout integration
 - Responsive UI สำหรับ Desktop และ Mobile
 - Supabase schema และ RLS foundation สำหรับ User/Jobsite access
-- Automated tests สำหรับ Demo Login และสิทธิ์ Jobsite
+- Automated tests สำหรับ Login, สิทธิ์ Jobsite และ Supabase data mapping
 
 ## บัญชีสำหรับทดสอบ
 
@@ -25,7 +25,7 @@
 | Engineer | `engineer` | `demo123` | SITE-001 และ SITE-002 |
 | User | `user` | `demo123` | SITE-001 แบบ Viewer |
 
-ระบบ Login ปัจจุบันเป็น demo authentication ฝั่ง Frontend เพื่อทดสอบหน้าจอและสิทธิ์เบื้องต้น ยังไม่ใช่ระบบรักษาความปลอดภัยสำหรับ Production
+หากยังไม่กำหนดค่า Supabase ระบบจะใช้บัญชีทดสอบด้านบนโดยอัตโนมัติ บัญชีเหล่านี้ใช้สำหรับตรวจหน้าจอเท่านั้น
 
 ## เริ่มต้นพัฒนา
 
@@ -42,6 +42,15 @@ npm test
 npm run build
 ```
 
+เปิดใช้ Supabase Auth โดยคัดลอก `.env.example` เป็น `.env.local` แล้วกำหนด:
+
+```bash
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+เมื่อกำหนดครบ หน้า Login จะเปลี่ยนเป็นอีเมล/รหัสผ่านและโหลด Profile กับ Jobsite ตาม RLS จาก Supabase
+
 รายละเอียดการเตรียม Backend และ RLS อยู่ใน `docs/backend-foundation.md`
 
 ## การเผยแพร่
@@ -49,5 +58,6 @@ npm run build
 - Source repository นี้เก็บเฉพาะระบบ CMMS
 - เว็บไซต์บริษัทอยู่ที่ `champln/thaicon-web-dev`
 - ระบบ public ที่มี Login, Session และ Demo API เผยแพร่แยกจากเว็บไซต์บริษัท
+- GitHub Pages อ่านค่า Supabase จาก Repository Variables ชื่อ `VITE_SUPABASE_URL` และ `VITE_SUPABASE_PUBLISHABLE_KEY`
 
 ข้อมูลภายในระบบปัจจุบันเป็นข้อมูลจำลองสำหรับทดสอบหน้าจอและ workflow เท่านั้น
