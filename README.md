@@ -14,6 +14,8 @@
 - IoT Monitor และ Telemetry แบบข้อมูลจำลอง
 - User profile และ Logout integration
 - Responsive UI สำหรับ Desktop และ Mobile
+- Supabase schema และ RLS foundation สำหรับ User/Jobsite access
+- Automated tests สำหรับ Demo Login และสิทธิ์ Jobsite
 
 ## บัญชีสำหรับทดสอบ
 
@@ -36,8 +38,11 @@ npm run dev
 
 ```bash
 npm run typecheck
+npm test
 npm run build
 ```
+
+รายละเอียดการเตรียม Backend และ RLS อยู่ใน `docs/backend-foundation.md`
 
 ## การเผยแพร่
 
