@@ -124,7 +124,7 @@ function TelemetryDrawer({ asset, onClose }: { asset: IotAsset; onClose: () => v
       <aside className="iot-drawer" role="dialog" aria-modal="true" aria-labelledby="iot-device-title" onMouseDown={(event) => event.stopPropagation()}>
         <div className="iot-drawer-top">
           <div>
-            <span className="iot-drawer-eyebrow">CONNECTED ASSET • {asset.id}</span>
+            <span className="iot-drawer-eyebrow">DEVICE • {asset.id}</span>
             <h2 id="iot-device-title">{asset.name}</h2>
             <p>{sites.find((site) => site.id === asset.siteId)?.name} • {asset.location}</p>
           </div>
@@ -155,9 +155,9 @@ function TelemetryDrawer({ asset, onClose }: { asset: IotAsset; onClose: () => v
           <div><dt>ค่ารอง</dt><dd>{asset.secondary.label} {numberFormat.format(asset.secondary.value)} {asset.secondary.unit}</dd></div>
           <div><dt>Warning threshold</dt><dd>{numberFormat.format(asset.primary.warning)} {asset.primary.unit}</dd></div>
           <div><dt>Critical threshold</dt><dd>{numberFormat.format(asset.primary.critical)} {asset.primary.unit}</dd></div>
-          <div><dt>Protocol</dt><dd>MQTT over TLS • Demo Gateway</dd></div>
+          <div><dt>Protocol</dt><dd>MQTT over TLS</dd></div>
         </dl>
-        <p className="iot-demo-note">ข้อมูลจำลองสำหรับทดสอบหน้าจอและ Workflow ก่อนเชื่อม Gateway และ MQTT จริง</p>
+        <p className="iot-demo-note">ข้อมูลจำลอง</p>
       </aside>
     </div>
   );
@@ -221,9 +221,9 @@ export default function IoTMonitor({
     <div className="iot-page">
       <div className="iot-toolbar">
         <div>
-          <span>IOT OPERATIONS • DEMO DATA ADAPTER</span>
+          <span>IOT MONITOR</span>
           <h2>ศูนย์ติดตามอุปกรณ์ — {activeSite.name}</h2>
-          <p>แสดงข้อมูลเฉพาะ Jobsite ที่เลือกและบัญชีนี้ได้รับอนุญาต</p>
+          <p>ข้อมูลของไซต์ {activeSite.id}</p>
         </div>
         <div className="iot-toolbar-actions">
           <small><i /> อัปเดตล่าสุด {lastUpdated.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</small>
@@ -232,7 +232,7 @@ export default function IoTMonitor({
       </div>
 
       <section className="iot-kpi-grid" aria-label="ตัวชี้วัด IoT">
-        <article className="iot-kpi green"><span>สถานะไซต์</span><strong>{statusLabels[activeSite.status]}</strong><small>{activeSite.id} • {activeSite.lastSeen}</small><em>JOBSITE SCOPE</em></article>
+        <article className="iot-kpi green"><span>สถานะไซต์</span><strong>{statusLabels[activeSite.status]}</strong><small>{activeSite.id} • {activeSite.lastSeen}</small><em>JOBSITE</em></article>
         <article className="iot-kpi blue"><span>อุปกรณ์กำลังส่งข้อมูล</span><strong>{activeSite.reportingDevices}</strong><small>จากทั้งหมด {activeSite.totalDevices} อุปกรณ์</small><em>{Math.round((activeSite.reportingDevices / activeSite.totalDevices) * 100)}% REPORTING</em></article>
         <article className="iot-kpi amber"><span>Gateway Online</span><strong>{activeSite.gatewayOnline}/{activeSite.gatewayTotal}</strong><small>ข้อมูลเฉพาะไซต์ที่เลือก</small><em>MQTT/TLS</em></article>
         <article className="iot-kpi red"><span>Alarm ที่ยังเปิดอยู่</span><strong>{visibleAlarms.filter((alarm) => !alarm.acknowledged).length}</strong><small>{visibleAlarms.filter((alarm) => alarm.severity === "critical" && !alarm.acknowledged).length} Critical • {visibleAlarms.filter((alarm) => alarm.severity === "warning" && !alarm.acknowledged).length} Warning</small><em>ต้องติดตาม</em></article>
@@ -264,7 +264,7 @@ export default function IoTMonitor({
         </section>
 
         <section className="iot-panel iot-live-panel">
-          <div className="iot-panel-heading"><div><span>LIVE SITE</span><h3>ข้อมูลไซต์แบบ Real-time</h3></div><small>{activeSite.lastSeen}</small></div>
+          <div className="iot-panel-heading"><div><span>SITE STATUS</span><h3>สถานะและข้อมูลล่าสุด</h3></div><small>{activeSite.lastSeen}</small></div>
           <div className="iot-live-content">
             <div className="iot-live-heading"><p><strong>{activeSite.name}</strong><span>{activeSite.type} • {activeSite.province}</span></p><em className={`iot-health-badge ${activeSite.status}`}>{statusLabels[activeSite.status]}</em></div>
             <div className="iot-live-metrics">
@@ -272,7 +272,7 @@ export default function IoTMonitor({
               <article><span>ความชื้นเฉลี่ย</span><strong>{activeSite.status === "offline" ? "—" : `${activeSite.humidity.toFixed(1)}%`}</strong><small>{activeSite.status === "offline" ? "ไม่พบข้อมูล" : "ข้อมูลล่าสุด"}</small></article>
               <article><span>Energy วันนี้</span><strong>{activeSite.status === "offline" ? "—" : activeSite.energy.toFixed(1)}</strong><small>kWh</small></article>
             </div>
-            <div className="iot-signal-block"><div><span>Energy Consumption — 24 ชั่วโมง</span><small>{activeSite.status === "offline" ? "No signal" : "Live data"}</small></div><div className="iot-mini-bars">{energyBars.map((height, index) => <i style={{ height: `${height}%` }} key={index} />)}</div></div>
+            <div className="iot-signal-block"><div><span>Energy Consumption — 24 ชั่วโมง</span><small>{activeSite.status === "offline" ? "No signal" : "มีสัญญาณ"}</small></div><div className="iot-mini-bars">{energyBars.map((height, index) => <i style={{ height: `${height}%` }} key={index} />)}</div></div>
             <footer><span>Gateway {activeSite.gatewayOnline}/{activeSite.gatewayTotal} Online</span><span>{activeSite.reportingDevices} จาก {activeSite.totalDevices} อุปกรณ์กำลังส่งข้อมูล</span></footer>
           </div>
         </section>
@@ -282,7 +282,7 @@ export default function IoTMonitor({
         <section className="iot-panel">
           <div className="iot-panel-heading"><div><span>CONNECTED ASSETS</span><h3>อุปกรณ์ที่ติดตาม — {activeSite.name}</h3></div><small>คลิกอุปกรณ์เพื่อดู Telemetry</small></div>
           <div className="iot-assets-list">
-            {visibleAssets.length === 0 && <div className="iot-empty">ยังไม่มีอุปกรณ์ตัวอย่างในไซต์นี้ หรือไม่ตรงกับคำค้นหา</div>}
+            {visibleAssets.length === 0 && <div className="iot-empty">ยังไม่มีอุปกรณ์ในไซต์นี้ หรือไม่ตรงกับคำค้นหา</div>}
             {visibleAssets.map((asset) => (
               <article className="iot-asset-row" key={asset.id}>
                 <div className="iot-asset-heading"><span className={`iot-device-icon ${asset.connection}`}>IoT</span><p><strong>{asset.name}</strong><span>{asset.id} • {asset.location}</span></p></div>

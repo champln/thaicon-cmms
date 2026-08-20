@@ -320,35 +320,35 @@ const pagesByRole: Record<UserRole, Page[]> = {
 const pageTitles: Record<Page, { title: string; subtitle: string }> = {
   dashboard: {
     title: "ภาพรวมการบำรุงรักษา",
-    subtitle: "ติดตามงาน เครื่องจักร และเหตุการณ์สำคัญของ Jobsite ที่เลือก",
+    subtitle: "งาน เครื่องจักร และ Alarm ของไซต์ที่เลือก",
   },
   "work-orders": {
     title: "ใบงานทั้งหมด",
-    subtitle: "บริหารงาน PM งานแก้ไข และงานฉุกเฉินจากจุดเดียว",
+    subtitle: "งาน PM, Corrective และ Emergency",
   },
   pm: {
     title: "แผน Preventive Maintenance",
-    subtitle: "วางแผนรอบบำรุงรักษา ทีมวิศวกร และภาระงานล่วงหน้า",
+    subtitle: "ตาราง PM และผู้รับผิดชอบ",
   },
   assets: {
     title: "ทะเบียนเครื่องจักร",
-    subtitle: "ดูสถานะ ประวัติ และรอบบำรุงรักษาของอุปกรณ์ทุกเครื่อง",
+    subtitle: "สถานะ ประวัติ และแผน PM รายเครื่อง",
   },
   sites: {
     title: "ไซต์ลูกค้า",
-    subtitle: "ภาพรวมสัญญาบริการและสินทรัพย์ในแต่ละพื้นที่",
+    subtitle: "สัญญาบริการและเครื่องจักรแยกตามไซต์",
   },
   alerts: {
     title: "Alarm & Events",
-    subtitle: "ตรวจสอบเหตุการณ์จาก IoT และจัดลำดับการตอบสนอง",
+    subtitle: "Alarm จากอุปกรณ์ IoT",
   },
   reports: {
     title: "รายงานประสิทธิภาพ",
-    subtitle: "ติดตามผลการดำเนินงาน PM, SLA และความพร้อมของระบบ",
+    subtitle: "ผล PM, SLA และสถานะเครื่องจักร",
   },
   iot: {
     title: "IoT Monitoring Center",
-    subtitle: "ติดตาม Gateway อุปกรณ์ และสัญญาณเตือนของ Jobsite ที่เลือก",
+    subtitle: "Gateway อุปกรณ์ และ Alarm ของไซต์ที่เลือก",
   },
 };
 
@@ -637,15 +637,15 @@ function DashboardPage({
   const dueToday = openOrders.filter((order) => order.due.includes("วันนี้"));
 
   return (
-    <>
+    <div className="cmms-dashboard-page">
       <section className="cmms-action-banner">
         <div>
           <span className="cmms-live-label">
             <i />
-            {canOperate ? "OPERATIONS LIVE" : "VIEWER ACCESS"}
+            {canOperate ? "สรุปวันนี้" : "สิทธิ์ดูข้อมูล"}
           </span>
-          <h2>{canOperate ? `วันนี้มี ${openOrders.length + criticalAlerts.length} รายการที่ต้องติดตาม` : "กำลังดูข้อมูลในสิทธิ์ Viewer"}</h2>
-          <p>{canOperate ? `พบ Alarm วิกฤต ${criticalAlerts.length} รายการ และใบงานครบกำหนดวันนี้ ${dueToday.length} รายการ` : "บัญชีนี้ดูแผน PM และรายงานของ Jobsite ที่ได้รับอนุญาตได้ แต่ไม่สามารถแก้ไขข้อมูล"}</p>
+          <h2>{canOperate ? `ต้องติดตาม ${openOrders.length + criticalAlerts.length} รายการ` : "ดูข้อมูลเท่านั้น"}</h2>
+          <p>{canOperate ? `Alarm วิกฤต ${criticalAlerts.length} รายการ • ใบงานครบกำหนดวันนี้ ${dueToday.length} รายการ` : "ดูแผน PM และรายงานได้ แต่แก้ไขข้อมูลไม่ได้"}</p>
         </div>
         {canOperate && (
           <button className="cmms-primary-button" type="button" onClick={onCreate}>
@@ -669,7 +669,7 @@ function DashboardPage({
           icon="calendar"
           label="PM เดือนนี้"
           value={`${pmCompliance}%`}
-          note="ข้อมูลตัวอย่างเฉพาะไซต์ที่เลือก"
+          note="ผล PM ตามแผนประจำเดือน"
           tone="cyan"
         />
         {canOperate && (
@@ -685,7 +685,7 @@ function DashboardPage({
           icon="asset"
           label="เครื่องจักรเฝ้าระวัง"
           value={String(watchedAssets.length)}
-          note={`จากเครื่องจักรตัวอย่าง ${siteAssets.length} รายการ`}
+          note={`ทั้งหมด ${siteAssets.length} เครื่อง`}
           tone="amber"
         />
       </section>
@@ -785,12 +785,12 @@ function DashboardPage({
               <p><i className="healthy" /><span>ปกติ</span><strong>{siteAssets.filter((asset) => asset.health === "ปกติ").length}</strong></p>
               <p><i className="watch" /><span>เฝ้าระวัง</span><strong>{siteAssets.filter((asset) => asset.health === "เฝ้าระวัง").length}</strong></p>
               <p><i className="critical" /><span>วิกฤต</span><strong>{siteAssets.filter((asset) => asset.health === "วิกฤต").length}</strong></p>
-              <small>ข้อมูลตัวอย่างเฉพาะ Jobsite ที่เลือก</small>
+              <small>ข้อมูลของไซต์ที่เลือก</small>
             </div>
           </div>
         </article>
       </section>
-    </>
+    </div>
   );
 }
 
@@ -1167,8 +1167,8 @@ function ReportsPage({ siteAssets }: { siteAssets: Asset[] }) {
       </section>
       <section className="cmms-panel cmms-report-note">
         <Icon name="chart" size={24} />
-        <h3>ข้อมูลต้นแบบ</h3>
-        <p>ตัวเลขในหน้ารายงานเป็นข้อมูลจำลอง เพื่อใช้ตรวจสอบโครงสร้างและประสบการณ์ใช้งานก่อนเชื่อมต่อฐานข้อมูลจริง</p>
+        <h3>หมายเหตุ</h3>
+        <p>รายงานนี้ใช้ข้อมูลจำลอง</p>
       </section>
     </div>
   );
@@ -1660,8 +1660,8 @@ export default function CMMSApp({
         </div>
 
         <div className="cmms-demo-note">
-          <span>DEMO DATA</span>
-          ข้อมูลในหน้าต้นแบบนี้เป็นข้อมูลจำลองเพื่อใช้ทดสอบ workflow
+          <span>ระบบทดสอบ</span>
+          ข้อมูลจำลอง
         </div>
 
         <div className="cmms-content">

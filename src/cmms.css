@@ -3381,3 +3381,198 @@
     min-height: 126px;
   }
 }
+
+/* Dashboard-specific type scale for faster operational scanning. */
+.cmms-dashboard-page .cmms-live-label {
+  font-size: 11px;
+}
+
+.cmms-dashboard-page .cmms-action-banner h2 {
+  font-size: 26px;
+}
+
+.cmms-dashboard-page .cmms-action-banner p,
+.cmms-dashboard-page .cmms-action-banner > .cmms-primary-button {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.cmms-dashboard-page .cmms-kpi span {
+  font-size: 12px;
+}
+
+.cmms-dashboard-page .cmms-kpi strong {
+  font-size: 30px;
+}
+
+.cmms-dashboard-page .cmms-kpi small {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.cmms-dashboard-page .cmms-panel-heading span {
+  font-size: 10px;
+}
+
+.cmms-dashboard-page .cmms-panel-heading h3 {
+  font-size: 17px;
+}
+
+.cmms-dashboard-page .cmms-panel-heading > button {
+  font-size: 12px;
+}
+
+.cmms-dashboard-page .cmms-table {
+  font-size: 11px;
+}
+
+.cmms-dashboard-page .cmms-table th {
+  font-size: 9px;
+}
+
+.cmms-dashboard-page .cmms-order-title strong {
+  font-size: 11px;
+}
+
+.cmms-dashboard-page .cmms-order-title small,
+.cmms-dashboard-page .cmms-cell-sub,
+.cmms-dashboard-page .cmms-work-type,
+.cmms-dashboard-page .cmms-status,
+.cmms-dashboard-page .cmms-priority,
+.cmms-dashboard-page .cmms-assignee i {
+  font-size: 9px;
+}
+
+.cmms-dashboard-page .cmms-cell-main,
+.cmms-dashboard-page .cmms-assignee,
+.cmms-dashboard-page .cmms-due {
+  font-size: 10px;
+}
+
+.cmms-dashboard-page .cmms-alert-item strong,
+.cmms-dashboard-page .cmms-mini-schedule p strong {
+  font-size: 12px;
+}
+
+.cmms-dashboard-page .cmms-alert-item p,
+.cmms-dashboard-page .cmms-mini-schedule p span {
+  font-size: 10px;
+}
+
+.cmms-dashboard-page .cmms-alert-item small,
+.cmms-dashboard-page .cmms-mini-schedule time span,
+.cmms-dashboard-page .cmms-mini-schedule em {
+  font-size: 9px;
+}
+
+.cmms-dashboard-page .cmms-alert-item b,
+.cmms-dashboard-page .cmms-health-ring span,
+.cmms-dashboard-page .cmms-health-legend p {
+  font-size: 10px;
+}
+
+.cmms-dashboard-page .cmms-health-ring strong {
+  font-size: 21px;
+}
+
+.cmms-dashboard-page .cmms-health-legend > small {
+  font-size: 9px;
+}
+
+@media (max-width: 680px) {
+  .cmms-dashboard-page .cmms-action-banner h2 {
+    font-size: 21px;
+  }
+
+  .cmms-dashboard-page .cmms-action-banner p,
+  .cmms-dashboard-page .cmms-action-banner > .cmms-primary-button {
+    font-size: 12px;
+  }
+
+  .cmms-dashboard-page .cmms-kpi span,
+  .cmms-dashboard-page .cmms-panel-heading > button {
+    font-size: 11px;
+  }
+
+  .cmms-dashboard-page .cmms-kpi strong {
+    font-size: 28px;
+  }
+
+  .cmms-dashboard-page .cmms-kpi small,
+  .cmms-dashboard-page .cmms-alert-item p,
+  .cmms-dashboard-page .cmms-mini-schedule p span {
+    font-size: 10px;
+  }
+}
+
+@media (min-width: 1900px) {
+  .cmms-dashboard-page .cmms-live-label {
+    font-size: 16px;
+  }
+
+  .cmms-dashboard-page .cmms-action-banner h2 {
+    font-size: 30px;
+  }
+
+  .cmms-dashboard-page .cmms-action-banner p,
+  .cmms-dashboard-page .cmms-action-banner > .cmms-primary-button {
+    font-size: 19px;
+  }
+
+  .cmms-dashboard-page .cmms-kpi span {
+    font-size: 17px;
+  }
+
+  .cmms-dashboard-page .cmms-kpi strong {
+    font-size: 34px;
+  }
+
+  .cmms-dashboard-page .cmms-kpi small {
+    font-size: 16px;
+  }
+
+  .cmms-dashboard-page .cmms-panel-heading span,
+  .cmms-dashboard-page .cmms-table th {
+    font-size: 15px;
+  }
+
+  .cmms-dashboard-page .cmms-panel-heading h3 {
+    font-size: 23px;
+  }
+
+  .cmms-dashboard-page .cmms-panel-heading > button,
+  .cmms-dashboard-page .cmms-table,
+  .cmms-dashboard-page .cmms-order-title strong,
+  .cmms-dashboard-page .cmms-alert-item strong,
+  .cmms-dashboard-page .cmms-mini-schedule p strong {
+    font-size: 17px;
+  }
+
+  .cmms-dashboard-page .cmms-order-title small,
+  .cmms-dashboard-page .cmms-cell-sub,
+  .cmms-dashboard-page .cmms-work-type,
+  .cmms-dashboard-page .cmms-status,
+  .cmms-dashboard-page .cmms-priority,
+  .cmms-dashboard-page .cmms-assignee i,
+  .cmms-dashboard-page .cmms-alert-item p,
+  .cmms-dashboard-page .cmms-alert-item small,
+  .cmms-dashboard-page .cmms-mini-schedule p span,
+  .cmms-dashboard-page .cmms-mini-schedule time span,
+  .cmms-dashboard-page .cmms-mini-schedule em,
+  .cmms-dashboard-page .cmms-health-ring span,
+  .cmms-dashboard-page .cmms-health-legend p,
+  .cmms-dashboard-page .cmms-health-legend > small {
+    font-size: 15px;
+  }
+
+  .cmms-dashboard-page .cmms-cell-main,
+  .cmms-dashboard-page .cmms-assignee,
+  .cmms-dashboard-page .cmms-due,
+  .cmms-dashboard-page .cmms-alert-item b {
+    font-size: 16px;
+  }
+
+  .cmms-dashboard-page .cmms-health-ring strong {
+    font-size: 25px;
+  }
+}

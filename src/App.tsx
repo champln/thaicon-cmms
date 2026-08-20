@@ -63,21 +63,21 @@ function LoginPage({ onLogin }: { onLogin: (user: DemoUser) => void }) {
           <span><strong>ThaiCon</strong><small>MAINTENANCE CLOUD</small></span>
         </div>
         <div className="access-visual-copy">
-          <span>CMMS • PM • SERVICE OPERATIONS</span>
-          <h1>ติดตามงานบำรุงรักษา<br />แยกตามไซต์อย่างปลอดภัย</h1>
-          <p>ต้นแบบระบบ Login และสิทธิ์เข้าถึง Jobsite สำหรับตรวจสอบกับลูกค้าก่อนเชื่อมต่อฐานข้อมูลจริง</p>
+          <span>ระบบบริหารงานบำรุงรักษา</span>
+          <h1>จัดการงานบำรุงรักษา<br />แยกตามไซต์</h1>
+          <p>ติดตามใบงาน แผน PM เครื่องจักร และ Alarm ของแต่ละไซต์</p>
         </div>
         <div className="access-security-note">
           <i />
-          <span><strong>Jobsite scoped access</strong><small>ผู้ใช้จะเห็นเฉพาะไซต์ที่ได้รับอนุญาต</small></span>
+          <span><strong>สิทธิ์การเข้าถึงตามไซต์</strong><small>แสดงเฉพาะไซต์ที่บัญชีเข้าถึงได้</small></span>
         </div>
       </section>
 
       <section className="access-panel">
         <div className="access-form-wrap">
-          <span className="access-eyebrow">WELCOME BACK</span>
+          <span className="access-eyebrow">THAICON CMMS</span>
           <h2>เข้าสู่ระบบ</h2>
-          <p>กรอกบัญชีผู้ใช้งานเพื่อเข้าสู่ ThaiCon CMMS</p>
+          <p>เข้าสู่ระบบเพื่อใช้งาน CMMS</p>
 
           <form onSubmit={submit}>
             <label>
@@ -107,7 +107,7 @@ function LoginPage({ onLogin }: { onLogin: (user: DemoUser) => void }) {
           </form>
 
           <div className="access-demo-accounts">
-            <div><span>บัญชีสำหรับทดสอบ</span><small>รหัสผ่านทุกบัญชี: demo123</small></div>
+            <div><span>บัญชีทดสอบ</span><small>รหัสผ่านทุกบัญชี: demo123</small></div>
             <div className="access-demo-grid">
               {demoUsers.map((user) => (
                 <button type="button" key={user.id} onClick={() => useDemoAccount(user)}>
@@ -118,7 +118,7 @@ function LoginPage({ onLogin }: { onLogin: (user: DemoUser) => void }) {
             </div>
           </div>
         </div>
-        <small className="access-footer">DEMO AUTHENTICATION • ยังไม่ใช่ระบบ Production</small>
+        <small className="access-footer">ระบบทดสอบ • ข้อมูลจำลอง</small>
       </section>
     </main>
   );
@@ -150,9 +150,9 @@ function JobsiteSelector({
       </header>
 
       <section className="site-select-content">
-        <span className="access-eyebrow">AUTHORIZED JOBSITES</span>
-        <h1>เลือกไซต์ที่ต้องการเข้าถึง</h1>
-        <p>ระบบแสดงเฉพาะ Jobsite ที่บัญชีของคุณได้รับอนุญาต</p>
+        <span className="access-eyebrow">รายการไซต์</span>
+        <h1>เลือกไซต์งาน</h1>
+        <p>ไซต์ที่บัญชีนี้เข้าถึงได้</p>
 
         <div className="site-select-grid">
           {sites.map((site) => (
