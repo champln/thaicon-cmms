@@ -1,34 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
 import IoTMonitor from "./IoTMonitor";
+import AdminWorkspace from "./AdminWorkspace";
 import { roleLabels } from "./access";
 import type { DemoUser, Jobsite, UserRole } from "./access";
+import {
+  MaintenancePlansPage,
+  PerformanceReportsPage,
+  PlanProgressOverview,
+  PmDueReminderPanel,
+  RepairRequestsPage,
+  ServiceReportsPage,
+} from "./MaintenanceWorkspace";
+import { loadMaintenanceState, saveMaintenanceState } from "./maintenance";
+import type { MaintenanceState } from "./maintenance";
+import { isSupabaseConfigured } from "./supabase";
+import { loadSupabaseMaintenanceState, syncSupabaseMaintenanceState } from "./maintenance-supabase";
+import type { AssetHealth, ManagedAsset, MasterDataState } from "./master-data";
 
 type Page =
   | "dashboard"
   | "work-orders"
   | "pm"
+  | "service-reports"
+  | "repair-requests"
   | "assets"
   | "sites"
   | "alerts"
   | "reports"
-  | "iot";
+  | "iot"
+  | "admin";
 
 type WorkStatus = "รอมอบหมาย" | "กำลังดำเนินการ" | "รอตรวจรับ" | "เสร็จสิ้น";
 type Priority = "วิกฤต" | "สูง" | "ปกติ" | "ต่ำ";
-type AssetHealth = "ปกติ" | "เฝ้าระวัง" | "วิกฤต";
-
-type Asset = {
-  id: string;
-  name: string;
-  type: string;
-  site: string;
-  location: string;
-  health: AssetHealth;
-  lastPm: string;
-  nextPm: string;
-  sensor: string;
-};
+type Asset = ManagedAsset & { site: string };
 
 type WorkOrder = {
   id: string;
@@ -67,75 +72,6 @@ type PmItem = {
   team: string;
   status: "พร้อมดำเนินการ" | "กำลังดำเนินการ" | "รอยืนยัน";
 };
-
-const assets: Asset[] = [
-  {
-    id: "AHU-OPD-01",
-    name: "Air Handling Unit — OPD",
-    type: "AHU",
-    site: "โรงพยาบาลนพรัตนราชธานี",
-    location: "อาคารผู้ป่วยนอก • ชั้น 2",
-    health: "เฝ้าระวัง",
-    lastPm: "28 มิ.ย. 2569",
-    nextPm: "30 ก.ค. 2569",
-    sensor: "Online • 24.8°C",
-  },
-  {
-    id: "CR-DP-02",
-    name: "Clean Room Differential Pressure",
-    type: "Clean Room",
-    site: "โรงพยาบาลกลาง",
-    location: "ห้องผ่าตัด • OR 2",
-    health: "วิกฤต",
-    lastPm: "15 ก.ค. 2569",
-    nextPm: "28 ก.ค. 2569",
-    sensor: "Online • 7.2 Pa",
-  },
-  {
-    id: "FREEZER-PH-03",
-    name: "ตู้แช่ยา Pharmacy 03",
-    type: "Medical Freezer",
-    site: "โรงพยาบาลสิรินธร",
-    location: "ห้องยา • ชั้น 1",
-    health: "ปกติ",
-    lastPm: "8 ก.ค. 2569",
-    nextPm: "8 ส.ค. 2569",
-    sensor: "Online • 3.8°C",
-  },
-  {
-    id: "AHU-ICU-04",
-    name: "Air Handling Unit — ICU",
-    type: "AHU",
-    site: "โรงพยาบาลพญาไท 2",
-    location: "อาคาร B • ชั้น 7",
-    health: "ปกติ",
-    lastPm: "22 ก.ค. 2569",
-    nextPm: "22 ส.ค. 2569",
-    sensor: "Online • 23.1°C",
-  },
-  {
-    id: "CTRL-LAB-05",
-    name: "Laboratory Control Panel",
-    type: "Control Panel",
-    site: "มหาวิทยาลัยธรรมศาสตร์",
-    location: "อาคารปฏิบัติการ • ชั้น 4",
-    health: "เฝ้าระวัง",
-    lastPm: "1 ก.ค. 2569",
-    nextPm: "1 ส.ค. 2569",
-    sensor: "Online • 41% load",
-  },
-  {
-    id: "EXF-ER-06",
-    name: "Emergency Exhaust Fan",
-    type: "Exhaust",
-    site: "โรงพยาบาลพญาไท 3",
-    location: "ห้องฉุกเฉิน • หลังอาคาร",
-    health: "ปกติ",
-    lastPm: "18 ก.ค. 2569",
-    nextPm: "18 ต.ค. 2569",
-    sensor: "Online • Running",
-  },
-];
 
 const initialWorkOrders: WorkOrder[] = [
   {
@@ -304,17 +240,20 @@ const navItems: { id: Page; label: string; icon: IconName }[] = [
   { id: "dashboard", label: "ภาพรวม", icon: "grid" },
   { id: "work-orders", label: "ใบงาน", icon: "clipboard" },
   { id: "pm", label: "แผน PM", icon: "calendar" },
+  { id: "service-reports", label: "Service Report", icon: "chart" },
+  { id: "repair-requests", label: "ใบแจ้งซ่อม", icon: "warning" },
   { id: "assets", label: "เครื่องจักร", icon: "asset" },
   { id: "sites", label: "ไซต์ลูกค้า", icon: "building" },
   { id: "alerts", label: "Alarm", icon: "bell" },
   { id: "reports", label: "รายงาน", icon: "chart" },
   { id: "iot", label: "IoT Monitor", icon: "iot" },
+  { id: "admin", label: "จัดการระบบ", icon: "user" },
 ];
 
 const pagesByRole: Record<UserRole, Page[]> = {
   admin: navItems.map((item) => item.id),
-  engineer: ["dashboard", "work-orders", "pm", "assets", "alerts", "reports", "iot"],
-  user: ["dashboard", "pm", "assets", "reports"],
+  engineer: ["service-reports"],
+  user: ["dashboard", "pm", "service-reports", "reports"],
 };
 
 const pageTitles: Record<Page, { title: string; subtitle: string }> = {
@@ -327,8 +266,16 @@ const pageTitles: Record<Page, { title: string; subtitle: string }> = {
     subtitle: "งาน PM, Corrective และ Emergency",
   },
   pm: {
-    title: "แผน Preventive Maintenance",
-    subtitle: "ตาราง PM และผู้รับผิดชอบ",
+    title: "แผนงานบำรุงรักษา",
+    subtitle: "แผนรายปี รอบส่งงาน และผล Plan เทียบ Actual",
+  },
+  "service-reports": {
+    title: "Service Report",
+    subtitle: "รายงานผลการปฏิบัติงาน หลักฐาน และการอนุมัติ",
+  },
+  "repair-requests": {
+    title: "ใบแจ้งซ่อม",
+    subtitle: "ติดตามความผิดปกติและผลการแก้ไข",
   },
   assets: {
     title: "ทะเบียนเครื่องจักร",
@@ -349,6 +296,10 @@ const pageTitles: Record<Page, { title: string; subtitle: string }> = {
   iot: {
     title: "IoT Monitoring Center",
     subtitle: "Gateway อุปกรณ์ และ Alarm ของไซต์ที่เลือก",
+  },
+  admin: {
+    title: "จัดการข้อมูลระบบ",
+    subtitle: "ไซต์ ผู้ใช้ สิทธิ์ และทะเบียนเครื่องจักร",
   },
 };
 
@@ -616,6 +567,8 @@ function DashboardPage({
   schedule,
   siteAssets,
   pmCompliance,
+  maintenanceState,
+  jobsiteId,
   canOperate,
   onSelectOrder,
   onNavigate,
@@ -626,6 +579,8 @@ function DashboardPage({
   schedule: PmItem[];
   siteAssets: Asset[];
   pmCompliance: number;
+  maintenanceState: MaintenanceState;
+  jobsiteId: string;
   canOperate: boolean;
   onSelectOrder: (order: WorkOrder) => void;
   onNavigate: (page: Page) => void;
@@ -654,6 +609,18 @@ function DashboardPage({
           </button>
         )}
       </section>
+
+      <PlanProgressOverview
+        state={maintenanceState}
+        jobsiteId={jobsiteId}
+        onOpenPlans={() => onNavigate("pm")}
+      />
+
+      <PmDueReminderPanel
+        state={maintenanceState}
+        jobsiteId={jobsiteId}
+        onOpenReports={() => onNavigate("service-reports")}
+      />
 
       <section className={`cmms-kpi-grid ${canOperate ? "" : "viewer"}`} aria-label="ตัวชี้วัดหลัก">
         {canOperate && (
@@ -1416,19 +1383,28 @@ export default function CMMSApp({
   currentUser,
   activeJobsite,
   allowedJobsites,
+  masterData,
+  onMasterDataChange,
   onChangeJobsite,
   onLogout,
 }: {
   currentUser: DemoUser;
   activeJobsite: Jobsite;
   allowedJobsites: Jobsite[];
+  masterData: MasterDataState;
+  onMasterDataChange: Dispatch<SetStateAction<MasterDataState>>;
   onChangeJobsite: () => void;
   onLogout: () => void;
 }) {
-  const [activePage, setActivePage] = useState<Page>("dashboard");
+  const [activePage, setActivePage] = useState<Page>(() => currentUser.role === "engineer" ? "service-reports" : "dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [workOrders, setWorkOrders] = useState(initialWorkOrders);
   const [alerts, setAlerts] = useState(initialAlerts);
+  const [maintenanceState, setMaintenanceState] = useState<MaintenanceState>(() => loadMaintenanceState());
+  const [maintenanceRemoteLoading, setMaintenanceRemoteLoading] = useState(isSupabaseConfigured);
+  const remoteMaintenanceBaseline = useRef<MaintenanceState | null>(null);
+  const maintenanceSyncTimer = useRef<number | null>(null);
+  const maintenanceSyncQueue = useRef(Promise.resolve());
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [presetAlert, setPresetAlert] = useState<AlertItem | null>(null);
@@ -1452,6 +1428,57 @@ export default function CMMSApp({
     const timeout = window.setTimeout(() => setToast(""), 2800);
     return () => window.clearTimeout(timeout);
   }, [toast]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) saveMaintenanceState(maintenanceState);
+  }, [maintenanceState]);
+
+  const allowedJobsiteKey = allowedJobsites.map((site) => site.id).sort().join(",");
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    setMaintenanceRemoteLoading(true);
+    loadSupabaseMaintenanceState(allowedJobsiteKey.split(",").filter(Boolean))
+      .then((remoteState) => {
+        if (cancelled) return;
+        remoteMaintenanceBaseline.current = structuredClone(remoteState);
+        setMaintenanceState(remoteState);
+        setMaintenanceRemoteLoading(false);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Unable to load maintenance workflow", error);
+        remoteMaintenanceBaseline.current = null;
+        setMaintenanceRemoteLoading(false);
+        setToast("โหลดข้อมูลงานจาก Supabase ไม่สำเร็จ ระบบยังไม่บันทึกการแก้ไข");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [allowedJobsiteKey, currentUser.id]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || maintenanceRemoteLoading || !remoteMaintenanceBaseline.current) return;
+    if (maintenanceSyncTimer.current) window.clearTimeout(maintenanceSyncTimer.current);
+    const snapshot = structuredClone(maintenanceState);
+    maintenanceSyncTimer.current = window.setTimeout(() => {
+      maintenanceSyncQueue.current = maintenanceSyncQueue.current
+        .then(async () => {
+          const previous = remoteMaintenanceBaseline.current;
+          if (!previous) return;
+          await syncSupabaseMaintenanceState(previous, snapshot, currentUser.id);
+          remoteMaintenanceBaseline.current = structuredClone(snapshot);
+        })
+        .catch((error) => {
+          console.error("Unable to sync maintenance workflow", error);
+          setToast("บันทึกข้อมูลไปยัง Supabase ไม่สำเร็จ กรุณาลองใหม่");
+        });
+    }, 450);
+    return () => {
+      if (maintenanceSyncTimer.current) window.clearTimeout(maintenanceSyncTimer.current);
+    };
+  }, [currentUser.id, maintenanceRemoteLoading, maintenanceState]);
 
   useEffect(() => {
     if (!profileMenuOpen) return;
@@ -1488,6 +1515,12 @@ export default function CMMSApp({
     setSidebarOpen(false);
     setGlobalSearch("");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const returnToJobsiteSelection = () => {
+    setSidebarOpen(false);
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    onChangeJobsite();
   };
 
   const createOrder = (order: WorkOrder) => {
@@ -1533,7 +1566,13 @@ export default function CMMSApp({
           }
         : current,
     );
-    setToast(`อัปเดต ${id} เป็น “${status}” แล้ว`);
+    if (status === "รอตรวจรับ") {
+      setSelectedOrder(null);
+      setActivePage("service-reports");
+      setToast(`อัปเดต ${id} แล้ว กรุณาสร้าง Service Report เพื่อส่งอนุมัติ`);
+    } else {
+      setToast(`อัปเดต ${id} เป็น “${status}” แล้ว`);
+    }
   };
 
   const openOrderFromAlert = (alert: AlertItem) => {
@@ -1546,7 +1585,9 @@ export default function CMMSApp({
   const canOperate = currentUser.role !== "user";
   const scopedWorkOrders = workOrders.filter((order) => order.site === activeJobsite.name);
   const scopedAlerts = alerts.filter((alert) => alert.site === activeJobsite.name);
-  const scopedAssets = assets.filter((asset) => asset.site === activeJobsite.name);
+  const scopedAssets: Asset[] = masterData.assets
+    .filter((asset) => asset.active && asset.jobsiteId === activeJobsite.id)
+    .map((asset) => ({ ...asset, site: activeJobsite.name }));
   const scopedSchedule = pmSchedule.filter((item) => item.site === activeJobsite.name);
   const pageMeta = pageTitles[activePage];
   const currentPage = {
@@ -1579,12 +1620,14 @@ export default function CMMSApp({
           ))}
         </nav>
         <div className="cmms-sidebar-bottom">
-          <button className="cmms-active-jobsite" type="button" onClick={onChangeJobsite}>
+          <button className="cmms-active-jobsite" type="button" onClick={returnToJobsiteSelection}>
             <span><i />JOBSITE ปัจจุบัน</span>
             <strong>{activeJobsite.name}</strong>
             <small>{activeJobsite.id} • เปลี่ยนไซต์</small>
           </button>
-          <a href="#home"><Icon name="logout" size={18} /><span>กลับเว็บไซต์หลัก</span></a>
+          <button className="cmms-back-to-sites" type="button" onClick={returnToJobsiteSelection}>
+            <Icon name="logout" size={18} /><span>กลับสู่หน้าเลือกไซต์</span>
+          </button>
         </div>
       </aside>
       {sidebarOpen && <button className="cmms-mobile-overlay" aria-label="ปิดเมนู" type="button" onClick={() => setSidebarOpen(false)} />}
@@ -1660,8 +1703,8 @@ export default function CMMSApp({
         </div>
 
         <div className="cmms-demo-note">
-          <span>ระบบทดสอบ</span>
-          ข้อมูลจำลอง
+          <span>{isSupabaseConfigured ? "ระบบออนไลน์" : "ระบบทดสอบ"}</span>
+          {isSupabaseConfigured ? (maintenanceRemoteLoading ? "กำลังโหลดข้อมูล" : "Supabase") : "ข้อมูลจำลอง"}
         </div>
 
         <div className="cmms-content">
@@ -1672,6 +1715,8 @@ export default function CMMSApp({
               schedule={scopedSchedule}
               siteAssets={scopedAssets}
               pmCompliance={activeJobsite.pmCompliance}
+              maintenanceState={maintenanceState}
+              jobsiteId={activeJobsite.id}
               canOperate={canOperate}
               onCreate={() => setCreateOpen(true)}
               onNavigate={navigate}
@@ -1681,7 +1726,40 @@ export default function CMMSApp({
           {activePage === "work-orders" && (
             <WorkOrdersPage orders={scopedWorkOrders} canOperate={canOperate} onSelect={setSelectedOrder} onCreate={() => setCreateOpen(true)} />
           )}
-          {activePage === "pm" && <PMPage schedule={scopedSchedule} />}
+          {activePage === "pm" && (
+            <MaintenancePlansPage
+              activeJobsite={activeJobsite}
+              currentUser={currentUser}
+              assets={scopedAssets}
+              state={maintenanceState}
+              setState={setMaintenanceState}
+              onToast={setToast}
+            />
+          )}
+          {activePage === "service-reports" && (
+            <ServiceReportsPage
+              activeJobsite={activeJobsite}
+              currentUser={currentUser}
+              assets={scopedAssets}
+              state={maintenanceState}
+              setState={setMaintenanceState}
+              onToast={setToast}
+              onReportApproved={(report) => {
+                if (!report.workOrderId) return;
+                setWorkOrders((current) => current.map((order) => order.id === report.workOrderId ? { ...order, status: "เสร็จสิ้น", progress: 100 } : order));
+              }}
+            />
+          )}
+          {activePage === "repair-requests" && (
+            <RepairRequestsPage
+              activeJobsite={activeJobsite}
+              currentUser={currentUser}
+              assets={scopedAssets}
+              state={maintenanceState}
+              setState={setMaintenanceState}
+              onToast={setToast}
+            />
+          )}
           {activePage === "assets" && <AssetsPage siteAssets={scopedAssets} />}
           {activePage === "sites" && <SitesPage sites={allowedJobsites} />}
           {activePage === "alerts" && (
@@ -1695,8 +1773,16 @@ export default function CMMSApp({
               onCreateOrder={openOrderFromAlert}
             />
           )}
-          {activePage === "reports" && <ReportsPage siteAssets={scopedAssets} />}
+          {activePage === "reports" && <PerformanceReportsPage activeJobsite={activeJobsite} state={maintenanceState} />}
           {activePage === "iot" && <IoTMonitor jobsiteId={activeJobsite.id} searchTerm={globalSearch} onNotify={setToast} />}
+          {activePage === "admin" && (
+            <AdminWorkspace
+              currentUser={currentUser}
+              state={masterData}
+              setState={onMasterDataChange}
+              onToast={setToast}
+            />
+          )}
         </div>
       </div>
 

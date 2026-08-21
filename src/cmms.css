@@ -240,18 +240,23 @@
   white-space: nowrap;
 }
 
-.cmms-sidebar-bottom > a {
+.cmms-sidebar-bottom > .cmms-back-to-sites {
+  width: 100%;
   min-height: 42px;
   padding: 8px 12px;
+  border: 0;
   border-radius: 7px;
   display: flex;
   align-items: center;
   gap: 11px;
+  background: transparent;
   color: #7792ae;
+  cursor: pointer;
   font-size: 12px;
+  text-align: left;
 }
 
-.cmms-sidebar-bottom > a:hover {
+.cmms-sidebar-bottom > .cmms-back-to-sites:hover {
   background: rgba(255, 255, 255, 0.05);
   color: white;
 }
@@ -293,7 +298,8 @@
 .cmms-mobile-page-title p {
   margin: 2px 0 0;
   color: var(--cmms-slate-500);
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .cmms-topbar-actions {
@@ -1106,7 +1112,8 @@
 .cmms-alert-item p {
   margin: 2px 0;
   color: #78889a;
-  font-size: 7px;
+  font-size: 12px;
+  line-height: 1.5;
   line-height: 1.4;
 }
 
@@ -1828,7 +1835,8 @@
 .cmms-site-card > p {
   margin: 0;
   color: #7e8d9e;
-  font-size: 8px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .cmms-site-metrics {
@@ -2016,7 +2024,8 @@
 .cmms-event-main p {
   margin: 0 0 4px;
   color: #738396;
-  font-size: 8px;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .cmms-event-main > small {
@@ -2232,7 +2241,8 @@
 .cmms-report-note p {
   margin: 0;
   color: #708194;
-  font-size: 9px;
+  font-size: 13px;
+  line-height: 1.55;
   line-height: 1.7;
 }
 
@@ -2539,7 +2549,8 @@
 .cmms-user-profile-heading p {
   margin: 0;
   color: var(--cmms-slate-500);
-  font-size: 10px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .cmms-user-profile-heading > button {
@@ -2646,7 +2657,8 @@
 .cmms-modal-heading p {
   margin: 0;
   color: #7a8a9c;
-  font-size: 9px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .cmms-modal form {
@@ -3170,7 +3182,7 @@
 
   .cmms-cloud-status strong,
   .cmms-active-jobsite strong,
-  .cmms-sidebar-bottom > a {
+  .cmms-sidebar-bottom > .cmms-back-to-sites {
     font-size: 16px;
   }
 
@@ -3451,12 +3463,13 @@
 
 .cmms-dashboard-page .cmms-alert-item strong,
 .cmms-dashboard-page .cmms-mini-schedule p strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .cmms-dashboard-page .cmms-alert-item p,
 .cmms-dashboard-page .cmms-mini-schedule p span {
-  font-size: 10px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .cmms-dashboard-page .cmms-alert-item small,
@@ -3468,7 +3481,8 @@
 .cmms-dashboard-page .cmms-alert-item b,
 .cmms-dashboard-page .cmms-health-ring span,
 .cmms-dashboard-page .cmms-health-legend p {
-  font-size: 10px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .cmms-dashboard-page .cmms-health-ring strong {
@@ -3486,7 +3500,7 @@
 
   .cmms-dashboard-page .cmms-action-banner p,
   .cmms-dashboard-page .cmms-action-banner > .cmms-primary-button {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .cmms-dashboard-page .cmms-kpi span,
@@ -3501,7 +3515,7 @@
   .cmms-dashboard-page .cmms-kpi small,
   .cmms-dashboard-page .cmms-alert-item p,
   .cmms-dashboard-page .cmms-mini-schedule p span {
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 

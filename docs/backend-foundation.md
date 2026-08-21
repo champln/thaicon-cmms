@@ -1,6 +1,6 @@
 # Backend Foundation
 
-This repository includes the first Supabase migration for authentication profiles and Jobsite access. The frontend now has a Supabase Auth adapter and falls back to the existing demo accounts when environment values are not supplied.
+This repository includes Supabase migrations for authentication, Jobsite access, and the confirmed annual-plan-to-Service-Report workflow. The frontend has a Supabase Auth adapter and falls back to source-controlled demo accounts when environment values are not supplied.
 
 ## Included schema
 
@@ -11,18 +11,26 @@ This repository includes the first Supabase migration for authentication profile
 - Row Level Security policies for all three public tables
 - Private helper functions used by RLS
 - A trigger that creates a safe default `user` profile for new Auth accounts
-
-Workflow tables such as plans, work orders, Service Reports, and repair requests are intentionally deferred until the customer confirms the full start-to-finish workflow.
+- `maintenance_plans` and generated `plan_cycles`
+- `service_reports` and `service_report_attachments`
+- `repair_requests`
+- `assets`: asset registry, health, PM dates, and active status by Jobsite
+- `jobsite_asset_counts`: active asset count view
+- `plan_progress` view where Actual counts approved Service Reports only
+- Private Storage bucket and policies for Service Report photos
+- Approval, scope-validation, updated-at, and plan-cycle triggers
 
 ## Apply to a Supabase project
 
 1. Create separate Development and Production Supabase projects.
 2. Authenticate the Supabase CLI and link the local repository to the Development project.
 3. Apply `supabase/migrations/202608190001_access_foundation.sql`.
-4. Load `supabase/seed.sql` into Development only.
-5. Create users through Supabase Auth so passwords are handled by Auth and never committed to source.
-6. Promote the required profile to `admin`, then create rows in `user_jobsites`.
-7. Verify the access scenarios below before connecting the frontend.
+4. Apply `supabase/migrations/202608210001_maintenance_workflow.sql`.
+5. Apply `supabase/migrations/202608210002_admin_master_data.sql`.
+6. Load `supabase/seed.sql` into Development only.
+7. Deploy `supabase/functions/admin-users` with the Supabase CLI. The function uses the server-side `SUPABASE_SERVICE_ROLE_KEY`; never expose that value through a `VITE_` variable.
+8. Create the first user through Supabase Auth, promote its profile to `admin`, then use the Admin function for later accounts and Jobsite assignments.
+9. Verify the access scenarios below before connecting the frontend.
 
 ## Required RLS checks
 
@@ -32,6 +40,11 @@ Workflow tables such as plans, work orders, Service Reports, and repair requests
 - User can read only assigned Jobsites.
 - Engineer/User cannot assign themselves to another Jobsite.
 - Disabled profiles cannot gain Jobsite access.
+- Actual and Progress cannot include Draft, Submitted, or Rejected Service Reports.
+- Only Admin can approve or reject a Service Report.
+- Engineer can create and edit reports only inside assigned Jobsites.
+- User can view plans, reports, repair requests, and download generated documents without editing.
+- Authorized users can read assets only in allowed Jobsites; only Admin can change the asset registry.
 - Browser code never receives a Supabase service-role key.
 
 ## Frontend Auth adapter
@@ -44,12 +57,16 @@ When configured, the frontend:
 - restores the persisted Supabase session;
 - loads the signed-in user's `profiles` row;
 - loads only Jobsites allowed by RLS;
+- loads and synchronizes plans, Service Reports, attachments, and repair requests for allowed Jobsites;
+- uploads Service Report images to the private Storage bucket and uses signed URLs for viewing;
 - signs out through Supabase Auth;
 - hides the source-controlled demo account shortcuts.
 
+`src/admin-supabase.ts` contains the browser-safe adapter for Jobsite/Asset CRUD and invokes the `admin-users` Edge Function for Auth account administration. Auth account creation and password changes must go through the Edge Function so the service-role key remains server-side.
+
 The publishable key is designed for browser use and remains constrained by RLS. Never expose a `service_role` or secret key through a `VITE_` variable.
 
-## Next integration batch
+## Production activation
 
-Create the Development Supabase project, apply the migration and seed, create Auth users, and assign their Jobsite access. Workflow tables remain deferred until the customer confirms the end-to-end process.
+Create the Development Supabase project, apply all three migrations, deploy `admin-users`, create the first Auth admin, assign Jobsite access, and configure the two `VITE_SUPABASE_*` values. Demo workflow and master data are persisted in Browser Local Storage; workflow data switches to Supabase automatically when configured. Complete an RLS integration pass before enabling Production.
 

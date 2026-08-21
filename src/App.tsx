@@ -2,13 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import CMMSApp from "./CMMSApp";
 import {
-  authenticateDemoUser,
   demoUsers,
-  getJobsitesForUser,
-  getUserById,
   roleLabels,
 } from "./access";
 import type { DemoUser, Jobsite } from "./access";
+import {
+  authenticateManagedUser,
+  jobsitesForManagedUser,
+  loadMasterData,
+  saveMasterData,
+} from "./master-data";
 import { isSupabaseConfigured, supabase } from "./supabase";
 import {
   restoreSupabaseAccess,
@@ -41,10 +44,12 @@ function readStoredSession(): StoredSession | null {
 }
 
 function LoginPage({
+  demoAccounts,
   initialError,
   onLogin,
   useSupabase,
 }: {
+  demoAccounts: DemoUser[];
   initialError: string;
   onLogin: (identifier: string, password: string) => Promise<void>;
   useSupabase: boolean;
@@ -137,7 +142,7 @@ function LoginPage({
             <div className="access-demo-accounts">
               <div><span>บัญชีทดสอบ</span><small>รหัสผ่านทุกบัญชี: demo123</small></div>
               <div className="access-demo-grid">
-                {demoUsers.map((user) => (
+                {demoAccounts.map((user) => (
                   <button type="button" key={user.id} onClick={() => useDemoAccount(user)}>
                     <span>{user.initials}</span>
                     <p><strong>{roleLabels[user.role]}</strong><small>{user.username}</small></p>
@@ -212,12 +217,13 @@ function JobsiteSelector({
 }
 
 export default function App() {
+  const [masterData, setMasterData] = useState(() => loadMasterData());
   const initialSession = useMemo(
     () => isSupabaseConfigured ? null : readStoredSession(),
     [],
   );
   const [user, setUser] = useState<DemoUser | null>(() =>
-    initialSession ? getUserById(initialSession.userId) : null,
+    initialSession ? masterData.users.find((item) => item.id === initialSession.userId && item.active) ?? null : null,
   );
   const [jobsiteId, setJobsiteId] = useState<string | null>(initialSession?.jobsiteId ?? null);
   const [supabaseSites, setSupabaseSites] = useState<Jobsite[]>([]);
@@ -228,9 +234,9 @@ export default function App() {
     () => isSupabaseConfigured
       ? supabaseSites
       : user
-        ? getJobsitesForUser(user)
+        ? jobsitesForManagedUser(masterData, user)
         : [],
-    [supabaseSites, user],
+    [masterData, supabaseSites, user],
   );
   const selectedSite = allowedSites.find((site) => site.id === jobsiteId) ?? null;
 
@@ -282,6 +288,19 @@ export default function App() {
   }, [jobsiteId, user]);
 
   useEffect(() => {
+    if (isSupabaseConfigured) return;
+    saveMasterData(masterData);
+    if (!user) return;
+    const updatedUser = masterData.users.find((item) => item.id === user.id && item.active) ?? null;
+    if (!updatedUser) {
+      setUser(null);
+      setJobsiteId(null);
+    } else if (updatedUser !== user) {
+      setUser(updatedUser);
+    }
+  }, [masterData, user]);
+
+  useEffect(() => {
     window.scrollTo({ top: 0, left: 0 });
   }, [jobsiteId, user?.id]);
 
@@ -295,7 +314,7 @@ export default function App() {
       return;
     }
 
-    const demoUser = authenticateDemoUser(identifier, password);
+    const demoUser = authenticateManagedUser(masterData.users, identifier, password);
     if (!demoUser) {
       throw new Error("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");
     }
@@ -332,6 +351,7 @@ export default function App() {
   if (!user) {
     return (
       <LoginPage
+        demoAccounts={isSupabaseConfigured ? demoUsers : masterData.users.filter((item) => item.active)}
         initialError={authError}
         onLogin={login}
         useSupabase={isSupabaseConfigured}
@@ -355,6 +375,8 @@ export default function App() {
       activeJobsite={selectedSite}
       allowedJobsites={allowedSites}
       currentUser={user}
+      masterData={masterData}
+      onMasterDataChange={setMasterData}
       onChangeJobsite={() => setJobsiteId(null)}
       onLogout={() => void logout()}
     />
