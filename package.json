@@ -11,6 +11,7 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:db": "supabase test db",
     "preview": "vite preview"
   },
   "dependencies": {

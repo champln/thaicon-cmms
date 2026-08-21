@@ -17,7 +17,7 @@ export type ManagedAsset = {
 };
 
 export type ManagedJobsite = Jobsite & { active: boolean };
-export type ManagedUser = DemoUser & { active: boolean };
+export type ManagedUser = DemoUser & { active: boolean; email?: string };
 
 export type MasterDataState = {
   jobsites: ManagedJobsite[];

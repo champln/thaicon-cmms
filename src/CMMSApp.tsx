@@ -17,6 +17,8 @@ import type { MaintenanceState } from "./maintenance";
 import { isSupabaseConfigured } from "./supabase";
 import { loadSupabaseMaintenanceState, syncSupabaseMaintenanceState } from "./maintenance-supabase";
 import type { AssetHealth, ManagedAsset, MasterDataState } from "./master-data";
+import { loadSupabaseOperationsState, syncSupabaseOperationsState } from "./operations-supabase";
+import type { OperationsState } from "./operations-supabase";
 
 type Page =
   | "dashboard"
@@ -35,7 +37,7 @@ type WorkStatus = "รอมอบหมาย" | "กำลังดำเน�
 type Priority = "วิกฤต" | "สูง" | "ปกติ" | "ต่ำ";
 type Asset = ManagedAsset & { site: string };
 
-type WorkOrder = {
+export type WorkOrder = {
   id: string;
   type: "PM" | "CM" | "EM";
   title: string;
@@ -50,7 +52,7 @@ type WorkOrder = {
   progress: number;
 };
 
-type AlertItem = {
+export type AlertItem = {
   id: string;
   level: "critical" | "warning" | "info";
   title: string;
@@ -1405,6 +1407,10 @@ export default function CMMSApp({
   const remoteMaintenanceBaseline = useRef<MaintenanceState | null>(null);
   const maintenanceSyncTimer = useRef<number | null>(null);
   const maintenanceSyncQueue = useRef(Promise.resolve());
+  const [operationsRemoteLoading, setOperationsRemoteLoading] = useState(isSupabaseConfigured);
+  const remoteOperationsBaseline = useRef<OperationsState | null>(null);
+  const operationsSyncTimer = useRef<number | null>(null);
+  const operationsSyncQueue = useRef(Promise.resolve());
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [presetAlert, setPresetAlert] = useState<AlertItem | null>(null);
@@ -1479,6 +1485,50 @@ export default function CMMSApp({
       if (maintenanceSyncTimer.current) window.clearTimeout(maintenanceSyncTimer.current);
     };
   }, [currentUser.id, maintenanceRemoteLoading, maintenanceState]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    setOperationsRemoteLoading(true);
+    loadSupabaseOperationsState(allowedJobsiteKey.split(",").filter(Boolean), masterData.jobsites, masterData.assets)
+      .then((remoteState) => {
+        if (cancelled) return;
+        remoteOperationsBaseline.current = structuredClone(remoteState);
+        setWorkOrders(remoteState.workOrders);
+        setAlerts(remoteState.alerts);
+        setOperationsRemoteLoading(false);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Unable to load operations workflow", error);
+        remoteOperationsBaseline.current = null;
+        setOperationsRemoteLoading(false);
+        setToast("โหลด Work Order และ Alarm จาก Supabase ไม่สำเร็จ");
+      });
+    return () => { cancelled = true; };
+  }, [allowedJobsiteKey, currentUser.id, masterData.assets, masterData.jobsites]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || operationsRemoteLoading || !remoteOperationsBaseline.current) return;
+    if (operationsSyncTimer.current) window.clearTimeout(operationsSyncTimer.current);
+    const snapshot: OperationsState = structuredClone({ workOrders, alerts });
+    operationsSyncTimer.current = window.setTimeout(() => {
+      operationsSyncQueue.current = operationsSyncQueue.current
+        .then(async () => {
+          const previous = remoteOperationsBaseline.current;
+          if (!previous) return;
+          await syncSupabaseOperationsState(previous, snapshot, currentUser.id, masterData.jobsites);
+          remoteOperationsBaseline.current = structuredClone(snapshot);
+        })
+        .catch((error) => {
+          console.error("Unable to sync operations workflow", error);
+          setToast("บันทึก Work Order หรือ Alarm ไปยัง Supabase ไม่สำเร็จ");
+        });
+    }, 450);
+    return () => {
+      if (operationsSyncTimer.current) window.clearTimeout(operationsSyncTimer.current);
+    };
+  }, [alerts, currentUser.id, masterData.jobsites, operationsRemoteLoading, workOrders]);
 
   useEffect(() => {
     if (!profileMenuOpen) return;
@@ -1704,7 +1754,7 @@ export default function CMMSApp({
 
         <div className="cmms-demo-note">
           <span>{isSupabaseConfigured ? "ระบบออนไลน์" : "ระบบทดสอบ"}</span>
-          {isSupabaseConfigured ? (maintenanceRemoteLoading ? "กำลังโหลดข้อมูล" : "Supabase") : "ข้อมูลจำลอง"}
+          {isSupabaseConfigured ? (maintenanceRemoteLoading || operationsRemoteLoading ? "กำลังโหลดข้อมูล" : "Supabase") : "ข้อมูลจำลอง"}
         </div>
 
         <div className="cmms-content">
@@ -1781,6 +1831,7 @@ export default function CMMSApp({
               state={masterData}
               setState={onMasterDataChange}
               onToast={setToast}
+              onlineMode={isSupabaseConfigured}
             />
           )}
         </div>

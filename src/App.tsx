@@ -8,10 +8,12 @@ import {
 import type { DemoUser, Jobsite } from "./access";
 import {
   authenticateManagedUser,
+  initialsFromName,
   jobsitesForManagedUser,
   loadMasterData,
   saveMasterData,
 } from "./master-data";
+import { loadSupabaseAdminMasterData, loadSupabaseAssets } from "./admin-supabase";
 import { isSupabaseConfigured, supabase } from "./supabase";
 import {
   restoreSupabaseAccess,
@@ -19,6 +21,7 @@ import {
   signOutFromSupabase,
   SupabaseAccessError,
 } from "./supabase-auth";
+import type { SupabaseAccess } from "./supabase-auth";
 import "./access.css";
 
 const STORAGE_KEY = "thaicon-cmms-demo-session-v1";
@@ -232,7 +235,9 @@ export default function App() {
 
   const allowedSites = useMemo(
     () => isSupabaseConfigured
-      ? supabaseSites
+      ? user?.role === "admin"
+        ? masterData.jobsites.filter((site) => site.active)
+        : supabaseSites
       : user
         ? jobsitesForManagedUser(masterData, user)
         : [],
@@ -240,15 +245,41 @@ export default function App() {
   );
   const selectedSite = allowedSites.find((site) => site.id === jobsiteId) ?? null;
 
+  const hydrateSupabaseMasterData = async (access: SupabaseAccess) => {
+    setUser(access.user);
+    setSupabaseSites(access.sites);
+    try {
+      if (access.user.role === "admin") {
+        const remoteMasterData = await loadSupabaseAdminMasterData();
+        setMasterData(remoteMasterData);
+        setSupabaseSites(remoteMasterData.jobsites.filter((site) => site.active));
+        return;
+      }
+      const assets = await loadSupabaseAssets(access.sites.map((site) => site.id));
+      setMasterData({
+        jobsites: access.sites.map((site) => ({ ...site, assetCount: assets.filter((asset) => asset.active && asset.jobsiteId === site.id).length, active: true })),
+        users: [{ ...access.user, initials: initialsFromName(access.user.displayName), active: true }],
+        assets,
+      });
+    } catch (error) {
+      console.error("Unable to load Supabase master data", error);
+      setMasterData({
+        jobsites: access.sites.map((site) => ({ ...site, active: true })),
+        users: [{ ...access.user, active: true }],
+        assets: [],
+      });
+      setAuthError("เข้าสู่ระบบแล้ว แต่โหลดข้อมูลไซต์หรือเครื่องจักรไม่ครบ กรุณาตรวจสอบ migration และ Edge Function");
+    }
+  };
+
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
     let active = true;
     restoreSupabaseAccess()
-      .then((access) => {
+      .then(async (access) => {
         if (!active || !access) return;
-        setUser(access.user);
-        setSupabaseSites(access.sites);
+        await hydrateSupabaseMasterData(access);
       })
       .catch((error: unknown) => {
         if (!active) return;
@@ -288,7 +319,12 @@ export default function App() {
   }, [jobsiteId, user]);
 
   useEffect(() => {
-    if (isSupabaseConfigured) return;
+    if (isSupabaseConfigured) {
+      if (!user || user.role !== "admin") return;
+      const updatedUser = masterData.users.find((item) => item.id === user.id && item.active);
+      if (updatedUser && updatedUser !== user) setUser(updatedUser);
+      return;
+    }
     saveMasterData(masterData);
     if (!user) return;
     const updatedUser = masterData.users.find((item) => item.id === user.id && item.active) ?? null;
@@ -308,8 +344,7 @@ export default function App() {
     setAuthError("");
     if (isSupabaseConfigured) {
       const access = await signInWithSupabase(identifier, password);
-      setUser(access.user);
-      setSupabaseSites(access.sites);
+      await hydrateSupabaseMasterData(access);
       setJobsiteId(null);
       return;
     }

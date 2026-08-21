@@ -1,16 +1,17 @@
-insert into public.jobsites (id, name, province, site_type)
+insert into public.jobsites (id, name, province, site_type, pm_compliance)
 values
-  ('SITE-001', 'โรงพยาบาลกลาง', 'กรุงเทพมหานคร', 'โรงพยาบาล'),
-  ('SITE-002', 'โรงพยาบาลนพรัตนราชธานี', 'กรุงเทพมหานคร', 'โรงพยาบาล'),
-  ('SITE-003', 'โรงพยาบาลสิรินธร', 'กรุงเทพมหานคร', 'โรงพยาบาล'),
-  ('SITE-004', 'มหาวิทยาลัยธรรมศาสตร์', 'ปทุมธานี', 'มหาวิทยาลัย'),
-  ('SITE-005', 'โรงพยาบาลพญาไท 2', 'กรุงเทพมหานคร', 'โรงพยาบาล'),
-  ('SITE-006', 'โรงพยาบาลพญาไท 3', 'กรุงเทพมหานคร', 'โรงพยาบาล')
+  ('SITE-001', 'โรงพยาบาลกลาง', 'กรุงเทพมหานคร', 'โรงพยาบาล', 92),
+  ('SITE-002', 'โรงพยาบาลนพรัตนราชธานี', 'กรุงเทพมหานคร', 'โรงพยาบาล', 96),
+  ('SITE-003', 'โรงพยาบาลสิรินธร', 'กรุงเทพมหานคร', 'โรงพยาบาล', 98),
+  ('SITE-004', 'มหาวิทยาลัยธรรมศาสตร์', 'ปทุมธานี', 'มหาวิทยาลัย', 95),
+  ('SITE-005', 'โรงพยาบาลพญาไท 2', 'กรุงเทพมหานคร', 'โรงพยาบาล', 97),
+  ('SITE-006', 'โรงพยาบาลพญาไท 3', 'กรุงเทพมหานคร', 'โรงพยาบาล', 94)
 on conflict (id) do update
 set
   name = excluded.name,
   province = excluded.province,
   site_type = excluded.site_type,
+  pm_compliance = excluded.pm_compliance,
   is_active = true;
 
 -- Create authentication users through Supabase Auth first. The trigger creates

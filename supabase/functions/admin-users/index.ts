@@ -39,12 +39,14 @@ Deno.serve(async (request) => {
 
     const payload = await request.json() as AdminUserPayload;
     if (payload.action === "list") {
-      const [{ data: profiles, error: profileError }, { data: assignments, error: assignmentError }] = await Promise.all([
+      const [{ data: profiles, error: profileError }, { data: assignments, error: assignmentError }, { data: authUsers, error: authError }] = await Promise.all([
         admin.from("profiles").select("id, username, display_name, role, title, is_active").order("display_name"),
         admin.from("user_jobsites").select("user_id, jobsite_id"),
+        admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
       ]);
-      if (profileError || assignmentError) throw profileError ?? assignmentError;
-      return json({ profiles, assignments });
+      if (profileError || assignmentError || authError) throw profileError ?? assignmentError ?? authError;
+      const emailById = new Map(authUsers.users.map((user) => [user.id, user.email ?? ""]));
+      return json({ profiles: (profiles ?? []).map((profile) => ({ ...profile, email: emailById.get(profile.id) ?? "" })), assignments });
     }
 
     if (payload.action === "create") {
@@ -55,8 +57,20 @@ Deno.serve(async (request) => {
     }
 
     if (!payload.userId) return json({ error: "userId is required" }, 400);
+    const { data: targetProfile, error: targetError } = await admin.from("profiles").select("role, is_active").eq("id", payload.userId).single();
+    if (targetError || !targetProfile) return json({ error: "User profile not found" }, 404);
+    if (payload.userId === callerData.user.id && (payload.action === "delete" || payload.active === false || (payload.role && payload.role !== "admin"))) {
+      return json({ error: "Cannot delete, disable, or demote the current admin account" }, 409);
+    }
+    const removesActiveAdmin = targetProfile.role === "admin" && targetProfile.is_active && (
+      payload.action === "delete" || payload.active === false || (payload.role !== undefined && payload.role !== "admin")
+    );
+    if (removesActiveAdmin) {
+      const { count, error: countError } = await admin.from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin").eq("is_active", true);
+      if (countError) throw countError;
+      if ((count ?? 0) <= 1) return json({ error: "At least one active administrator is required" }, 409);
+    }
     if (payload.action === "delete") {
-      if (payload.userId === callerData.user.id) return json({ error: "Cannot delete the current account" }, 409);
       const { error } = await admin.auth.admin.deleteUser(payload.userId);
       if (error) throw error;
       return json({ ok: true });

@@ -8,7 +8,7 @@
 - Supabase Auth adapter พร้อม Demo Login fallback
 - เลือก Jobsite ตามสิทธิ์ Admin, Engineer และ User
 - กรอง Work Order, Alarm, PM, Asset และ IoT ตาม Jobsite ที่เลือก
-- Work Order และ Alarm workflow
+- Work Order และ Alarm workflow พร้อม Supabase adapter และ RLS
 - แผนงานรายปี แบ่งรอบ 1, 2 หรือ 3 เดือน พร้อมเป้าหมายและงานคงเหลือ
 - Service Report แบบ Draft / ส่งอนุมัติ / อนุมัติ / ส่งกลับ พร้อมแนบภาพ
 - ดาวน์โหลด Service Report เป็น PDF
@@ -16,7 +16,7 @@
 - รายงานผลรายปี รายเดือน และรายรอบ
 - รายงานกรองตามปี เดือน แผน และรอบ พร้อมดาวน์โหลด PDF
 - แจ้งเตือนรอบ PM เกินกำหนด ใกล้ครบกำหนด และ Service Report รออนุมัติ
-- Admin Center จัดการไซต์ ผู้ใช้/สิทธิ์ และทะเบียนเครื่องจักร
+- Admin Center จัดการไซต์ ผู้ใช้/สิทธิ์ และทะเบียนเครื่องจักรทั้งโหมด Demo และ Supabase
 - IoT Monitor และ Telemetry แบบข้อมูลจำลอง
 - User profile และ Logout integration
 - Responsive UI สำหรับ Desktop และ Mobile
@@ -47,6 +47,7 @@ npm run dev
 ```bash
 npm run typecheck
 npm test
+npm run test:db # ต้องมี Supabase local stack
 npm run build
 ```
 
@@ -57,7 +58,7 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 ```
 
-เมื่อกำหนดครบ หน้า Login จะเปลี่ยนเป็นอีเมล/รหัสผ่าน โหลด Profile กับ Jobsite ตาม RLS และบันทึกแผนงาน Service Report รูปภาพ และใบแจ้งซ่อมลง Supabase โดยอัตโนมัติ ก่อนใช้งาน Production ให้ apply migration ทั้ง 3 ไฟล์และ deploy Edge Function `admin-users` ตามลำดับ
+เมื่อกำหนดครบ หน้า Login จะเปลี่ยนเป็นอีเมล/รหัสผ่าน และระบบจะโหลด/บันทึก Master Data, Work Order, Alarm, แผนงาน, Service Report, รูปภาพ และใบแจ้งซ่อมผ่าน Supabase ก่อนใช้งาน Production ให้ apply migration ทั้ง 4 ไฟล์และ deploy Edge Function `admin-users` ตามลำดับ
 
 รายละเอียดการเตรียม Backend และ RLS อยู่ใน `docs/backend-foundation.md`
 
