@@ -105,7 +105,7 @@
 .cmms-sidebar nav button {
   position: relative;
   width: 100%;
-  min-height: 48px;
+  min-height: 46px;
   padding: 9px 12px;
   border: 0;
   border-radius: 7px;
@@ -115,9 +115,8 @@
   background: transparent;
   color: #91a7c0;
   cursor: pointer;
-  font-size: 16px;
-  font-weight: 560;
-  line-height: 1.35;
+  font-size: 13px;
+  font-weight: 520;
   text-align: left;
   transition: background 150ms ease, color 150ms ease;
 }
@@ -255,6 +254,159 @@
   cursor: pointer;
   font-size: 12px;
   text-align: left;
+}
+
+/* Improve readability inside the main operational pages without enlarging the sidebar. */
+.cmms-work-orders-page .cmms-tabs button,
+.cmms-work-orders-page .cmms-primary-button,
+.cmms-work-orders-page .cmms-secondary-button,
+.cmms-work-orders-page .cmms-inline-search input,
+.cmms-assets-page .cmms-inline-search input,
+.cmms-assets-page .cmms-select {
+  font-size: 13px;
+}
+
+.cmms-work-orders-page .cmms-tabs button span,
+.cmms-work-orders-page .cmms-work-type,
+.cmms-work-orders-page .cmms-status,
+.cmms-work-orders-page .cmms-priority,
+.cmms-work-orders-page .cmms-order-title small,
+.cmms-work-orders-page .cmms-cell-sub {
+  font-size: 11px;
+}
+
+.cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-table {
+  font-size: 14px;
+}
+
+.cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-table th,
+.cmms-work-orders-page .cmms-cell-main,
+.cmms-work-orders-page .cmms-assignee {
+  font-size: 12px;
+}
+
+.cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-order-title strong {
+  font-size: 14px;
+}
+
+.cmms-assets-page .cmms-asset-stats span,
+.cmms-assets-page .cmms-asset-card > p {
+  font-size: 13px;
+}
+
+.cmms-assets-page .cmms-health-badge,
+.cmms-assets-page .cmms-asset-id,
+.cmms-assets-page .cmms-asset-card-bottom small {
+  font-size: 11px;
+}
+
+.cmms-assets-page .cmms-asset-card h3 {
+  font-size: 16px;
+}
+
+.cmms-assets-page .cmms-asset-card > small,
+.cmms-assets-page .cmms-asset-card-bottom strong {
+  font-size: 12px;
+}
+
+.cmms-sites-page .cmms-site-card-top small,
+.cmms-sites-page .cmms-site-metrics small {
+  font-size: 11px;
+}
+
+.cmms-sites-page .cmms-site-card h3 {
+  font-size: 17px;
+}
+
+.cmms-sites-page .cmms-site-card > p {
+  font-size: 14px;
+}
+
+.cmms-sites-page .cmms-site-metrics strong {
+  font-size: 18px;
+}
+
+.cmms-sites-page .cmms-site-footer span,
+.cmms-sites-page .cmms-site-footer button {
+  font-size: 12px;
+}
+
+.cmms-repair-requests-page .maint-page-toolbar h2 {
+  font-size: 25px;
+}
+
+.cmms-repair-requests-page .maint-page-toolbar p,
+.cmms-repair-requests-page .maint-table td {
+  font-size: 15px;
+}
+
+.cmms-repair-requests-page .maint-button {
+  font-size: 14px;
+}
+
+.cmms-repair-requests-page .maint-table th,
+.cmms-repair-requests-page .maint-row-actions button {
+  font-size: 13px;
+}
+
+.cmms-repair-requests-page .maint-table td > small,
+.cmms-repair-requests-page .maint-status,
+.cmms-repair-requests-page .maint-priority {
+  font-size: 12px;
+}
+
+@media (min-width: 1900px) {
+  .cmms-work-orders-page .cmms-tabs button,
+  .cmms-work-orders-page .cmms-primary-button,
+  .cmms-work-orders-page .cmms-secondary-button,
+  .cmms-work-orders-page .cmms-inline-search input,
+  .cmms-assets-page .cmms-inline-search input,
+  .cmms-assets-page .cmms-select,
+  .cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-table,
+  .cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-order-title strong,
+  .cmms-repair-requests-page .maint-table td {
+    font-size: 16px;
+  }
+
+  .cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-table th,
+  .cmms-work-orders-page .cmms-cell-main,
+  .cmms-work-orders-page .cmms-assignee,
+  .cmms-assets-page .cmms-asset-stats span,
+  .cmms-assets-page .cmms-asset-card > p,
+  .cmms-repair-requests-page .maint-table th,
+  .cmms-repair-requests-page .maint-row-actions button {
+    font-size: 14px;
+  }
+
+  .cmms-work-orders-page .cmms-tabs button span,
+  .cmms-work-orders-page .cmms-work-type,
+  .cmms-work-orders-page .cmms-status,
+  .cmms-work-orders-page .cmms-priority,
+  .cmms-work-orders-page .cmms-order-title small,
+  .cmms-work-orders-page .cmms-cell-sub,
+  .cmms-assets-page .cmms-health-badge,
+  .cmms-assets-page .cmms-asset-id,
+  .cmms-assets-page .cmms-asset-card > small,
+  .cmms-assets-page .cmms-asset-card-bottom small,
+  .cmms-assets-page .cmms-asset-card-bottom strong,
+  .cmms-sites-page .cmms-site-card-top small,
+  .cmms-sites-page .cmms-site-metrics small,
+  .cmms-sites-page .cmms-site-footer span,
+  .cmms-sites-page .cmms-site-footer button,
+  .cmms-repair-requests-page .maint-table td > small,
+  .cmms-repair-requests-page .maint-status,
+  .cmms-repair-requests-page .maint-priority {
+    font-size: 14px;
+  }
+
+  .cmms-assets-page .cmms-asset-card h3,
+  .cmms-sites-page .cmms-site-card h3 {
+    font-size: 19px;
+  }
+
+  .cmms-sites-page .cmms-site-card > p {
+    font-size: 16px;
+  }
 }
 
 .cmms-sidebar-bottom > .cmms-back-to-sites:hover {

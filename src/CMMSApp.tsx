@@ -790,7 +790,7 @@ function WorkOrdersPage({
   }, [orders, query, status]);
 
   return (
-    <section className="cmms-panel cmms-page-panel">
+    <section className="cmms-panel cmms-page-panel cmms-work-orders-page">
       <div className="cmms-list-toolbar">
         <div className="cmms-tabs" role="tablist" aria-label="กรองสถานะใบงาน">
           {(["ทั้งหมด", "รอมอบหมาย", "กำลังดำเนินการ", "รอตรวจรับ", "เสร็จสิ้น"] as const).map(
@@ -919,7 +919,7 @@ function AssetsPage({ siteAssets }: { siteAssets: Asset[] }) {
 
   return (
     <>
-      <section className="cmms-panel cmms-page-panel">
+      <section className="cmms-panel cmms-page-panel cmms-assets-page">
         <div className="cmms-list-toolbar">
           <div className="cmms-asset-stats">
             <span><i className="healthy" />ปกติ <strong>{siteAssets.filter((asset) => asset.health === "ปกติ").length}</strong></span>
@@ -1007,7 +1007,7 @@ function AssetsPage({ siteAssets }: { siteAssets: Asset[] }) {
 
 function SitesPage({ sites }: { sites: Jobsite[] }) {
   return (
-    <section className="cmms-site-grid">
+    <section className="cmms-site-grid cmms-sites-page">
       {sites.map((site) => (
         <article className="cmms-panel cmms-site-card" key={site.name}>
           <div className="cmms-site-card-top">
@@ -1802,14 +1802,16 @@ export default function CMMSApp({
             />
           )}
           {activePage === "repair-requests" && (
-            <RepairRequestsPage
-              activeJobsite={activeJobsite}
-              currentUser={currentUser}
-              assets={scopedAssets}
-              state={maintenanceState}
-              setState={setMaintenanceState}
-              onToast={setToast}
-            />
+            <div className="cmms-repair-requests-page">
+              <RepairRequestsPage
+                activeJobsite={activeJobsite}
+                currentUser={currentUser}
+                assets={scopedAssets}
+                state={maintenanceState}
+                setState={setMaintenanceState}
+                onToast={setToast}
+              />
+            </div>
           )}
           {activePage === "assets" && <AssetsPage siteAssets={scopedAssets} />}
           {activePage === "sites" && <SitesPage sites={allowedJobsites} />}
