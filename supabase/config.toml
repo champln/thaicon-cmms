@@ -1,0 +1,4 @@
+project_id = "thaicon-cmms"
+
+[functions.username-login]
+verify_jwt = false

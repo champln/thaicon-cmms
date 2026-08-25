@@ -113,15 +113,15 @@ function LoginPage({
 
           <form onSubmit={submit}>
             <label>
-              {useSupabase ? "อีเมล" : "ชื่อผู้ใช้งาน"}
+              ชื่อผู้ใช้งาน
               <input
-                autoComplete={useSupabase ? "email" : "username"}
+                autoComplete="username"
                 autoFocus
                 value={identifier}
                 onChange={(event) => setIdentifier(event.target.value)}
-                placeholder={useSupabase ? "name@company.com" : "เช่น admin"}
+                placeholder="เช่น admin"
                 required
-                type={useSupabase ? "email" : "text"}
+                type="text"
               />
             </label>
             <label>

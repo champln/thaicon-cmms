@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapSupabaseAccess } from "./supabase-auth";
+import { getSupabaseLoginMethod, mapSupabaseAccess } from "./supabase-auth";
 import type { JobsiteRow, ProfileRow } from "./supabase-auth";
 
 const engineerProfile: ProfileRow = {
@@ -10,6 +10,16 @@ const engineerProfile: ProfileRow = {
   title: null,
   is_active: true,
 };
+
+describe("Supabase login identifier", () => {
+  it("uses username login by default", () => {
+    expect(getSupabaseLoginMethod("  engineer.one ")).toBe("username");
+  });
+
+  it("keeps email login available for administrators", () => {
+    expect(getSupabaseLoginMethod(" admin@company.com ")).toBe("email");
+  });
+});
 
 describe("Supabase access mapping", () => {
   it("maps profile and accessible Jobsites into the current UI model", () => {

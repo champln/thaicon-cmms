@@ -26,6 +26,15 @@ export type JobsiteRow = {
   site_type: string;
 };
 
+type UsernameLoginResponse = {
+  accessToken: string;
+  refreshToken: string;
+};
+
+export function getSupabaseLoginMethod(identifier: string): "email" | "username" {
+  return identifier.trim().includes("@") ? "email" : "username";
+}
+
 export class SupabaseAccessError extends Error {
   constructor(public readonly userMessage: string, cause?: unknown) {
     super(userMessage, { cause });
@@ -107,21 +116,44 @@ export async function loadSupabaseAccess(userId: string): Promise<SupabaseAccess
 }
 
 export async function signInWithSupabase(
-  email: string,
+  identifier: string,
   password: string,
 ): Promise<SupabaseAccess> {
   const client = requireSupabase();
-  const { data, error } = await client.auth.signInWithPassword({
-    email: email.trim().toLocaleLowerCase("en"),
-    password,
-  });
+  const normalizedIdentifier = identifier.trim().toLocaleLowerCase("en");
+  let userId: string | undefined;
+  let authError: unknown;
 
-  if (error || !data.user) {
-    throw new SupabaseAccessError("อีเมลหรือรหัสผ่านไม่ถูกต้อง", error);
+  if (getSupabaseLoginMethod(normalizedIdentifier) === "email") {
+    const { data, error } = await client.auth.signInWithPassword({
+      email: normalizedIdentifier,
+      password,
+    });
+    userId = data.user?.id;
+    authError = error;
+  } else {
+    const { data, error } = await client.functions.invoke<UsernameLoginResponse>(
+      "username-login",
+      { body: { username: normalizedIdentifier, password } },
+    );
+    authError = error;
+
+    if (data?.accessToken && data.refreshToken) {
+      const { data: sessionData, error: sessionError } = await client.auth.setSession({
+        access_token: data.accessToken,
+        refresh_token: data.refreshToken,
+      });
+      userId = sessionData.user?.id;
+      authError = sessionError;
+    }
+  }
+
+  if (authError || !userId) {
+    throw new SupabaseAccessError("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", authError);
   }
 
   try {
-    return await loadSupabaseAccess(data.user.id);
+    return await loadSupabaseAccess(userId);
   } catch (error) {
     await client.auth.signOut();
     throw error;
