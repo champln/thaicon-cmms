@@ -14,7 +14,6 @@ import {
 } from "./MaintenanceWorkspace";
 import { loadMaintenanceState, saveMaintenanceState } from "./maintenance";
 import type { MaintenanceState } from "./maintenance";
-import { isSupabaseConfigured } from "./supabase";
 import { loadSupabaseMaintenanceState, syncSupabaseMaintenanceState } from "./maintenance-supabase";
 import type { AssetHealth, ManagedAsset, MasterDataState } from "./master-data";
 import { loadSupabaseOperationsState, syncSupabaseOperationsState } from "./operations-supabase";
@@ -1389,6 +1388,7 @@ export default function CMMSApp({
   onMasterDataChange,
   onChangeJobsite,
   onLogout,
+  onlineMode,
 }: {
   currentUser: DemoUser;
   activeJobsite: Jobsite;
@@ -1397,17 +1397,18 @@ export default function CMMSApp({
   onMasterDataChange: Dispatch<SetStateAction<MasterDataState>>;
   onChangeJobsite: () => void;
   onLogout: () => void;
+  onlineMode: boolean;
 }) {
   const [activePage, setActivePage] = useState<Page>(() => currentUser.role === "engineer" ? "service-reports" : "dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [workOrders, setWorkOrders] = useState(initialWorkOrders);
   const [alerts, setAlerts] = useState(initialAlerts);
   const [maintenanceState, setMaintenanceState] = useState<MaintenanceState>(() => loadMaintenanceState());
-  const [maintenanceRemoteLoading, setMaintenanceRemoteLoading] = useState(isSupabaseConfigured);
+  const [maintenanceRemoteLoading, setMaintenanceRemoteLoading] = useState(onlineMode);
   const remoteMaintenanceBaseline = useRef<MaintenanceState | null>(null);
   const maintenanceSyncTimer = useRef<number | null>(null);
   const maintenanceSyncQueue = useRef(Promise.resolve());
-  const [operationsRemoteLoading, setOperationsRemoteLoading] = useState(isSupabaseConfigured);
+  const [operationsRemoteLoading, setOperationsRemoteLoading] = useState(onlineMode);
   const remoteOperationsBaseline = useRef<OperationsState | null>(null);
   const operationsSyncTimer = useRef<number | null>(null);
   const operationsSyncQueue = useRef(Promise.resolve());
@@ -1436,13 +1437,13 @@ export default function CMMSApp({
   }, [toast]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) saveMaintenanceState(maintenanceState);
-  }, [maintenanceState]);
+    if (!onlineMode) saveMaintenanceState(maintenanceState);
+  }, [maintenanceState, onlineMode]);
 
   const allowedJobsiteKey = allowedJobsites.map((site) => site.id).sort().join(",");
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!onlineMode) return;
     let cancelled = false;
     setMaintenanceRemoteLoading(true);
     loadSupabaseMaintenanceState(allowedJobsiteKey.split(",").filter(Boolean))
@@ -1462,10 +1463,10 @@ export default function CMMSApp({
     return () => {
       cancelled = true;
     };
-  }, [allowedJobsiteKey, currentUser.id]);
+  }, [allowedJobsiteKey, currentUser.id, onlineMode]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || maintenanceRemoteLoading || !remoteMaintenanceBaseline.current) return;
+    if (!onlineMode || maintenanceRemoteLoading || !remoteMaintenanceBaseline.current) return;
     if (maintenanceSyncTimer.current) window.clearTimeout(maintenanceSyncTimer.current);
     const snapshot = structuredClone(maintenanceState);
     maintenanceSyncTimer.current = window.setTimeout(() => {
@@ -1484,10 +1485,10 @@ export default function CMMSApp({
     return () => {
       if (maintenanceSyncTimer.current) window.clearTimeout(maintenanceSyncTimer.current);
     };
-  }, [currentUser.id, maintenanceRemoteLoading, maintenanceState]);
+  }, [currentUser.id, maintenanceRemoteLoading, maintenanceState, onlineMode]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!onlineMode) return;
     let cancelled = false;
     setOperationsRemoteLoading(true);
     loadSupabaseOperationsState(allowedJobsiteKey.split(",").filter(Boolean), masterData.jobsites, masterData.assets)
@@ -1506,10 +1507,10 @@ export default function CMMSApp({
         setToast("โหลด Work Order และ Alarm จาก Supabase ไม่สำเร็จ");
       });
     return () => { cancelled = true; };
-  }, [allowedJobsiteKey, currentUser.id, masterData.assets, masterData.jobsites]);
+  }, [allowedJobsiteKey, currentUser.id, masterData.assets, masterData.jobsites, onlineMode]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || operationsRemoteLoading || !remoteOperationsBaseline.current) return;
+    if (!onlineMode || operationsRemoteLoading || !remoteOperationsBaseline.current) return;
     if (operationsSyncTimer.current) window.clearTimeout(operationsSyncTimer.current);
     const snapshot: OperationsState = structuredClone({ workOrders, alerts });
     operationsSyncTimer.current = window.setTimeout(() => {
@@ -1528,7 +1529,7 @@ export default function CMMSApp({
     return () => {
       if (operationsSyncTimer.current) window.clearTimeout(operationsSyncTimer.current);
     };
-  }, [alerts, currentUser.id, masterData.jobsites, operationsRemoteLoading, workOrders]);
+  }, [alerts, currentUser.id, masterData.jobsites, onlineMode, operationsRemoteLoading, workOrders]);
 
   useEffect(() => {
     if (!profileMenuOpen) return;
@@ -1753,8 +1754,8 @@ export default function CMMSApp({
         </div>
 
         <div className="cmms-demo-note">
-          <span>{isSupabaseConfigured ? "ระบบออนไลน์" : "ระบบทดสอบ"}</span>
-          {isSupabaseConfigured ? (maintenanceRemoteLoading || operationsRemoteLoading ? "กำลังโหลดข้อมูล" : "Supabase") : "ข้อมูลจำลอง"}
+          <span>{onlineMode ? "ระบบออนไลน์" : "ระบบทดสอบ"}</span>
+          {onlineMode ? (maintenanceRemoteLoading || operationsRemoteLoading ? "กำลังโหลดข้อมูล" : "Supabase") : "ข้อมูลจำลอง"}
         </div>
 
         <div className="cmms-content">
@@ -1831,7 +1832,7 @@ export default function CMMSApp({
               state={masterData}
               setState={onMasterDataChange}
               onToast={setToast}
-              onlineMode={isSupabaseConfigured}
+              onlineMode={onlineMode}
             />
           )}
         </div>
