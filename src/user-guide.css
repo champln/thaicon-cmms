@@ -1,0 +1,39 @@
+.user-guide { --guide-ink:#17324d; --guide-muted:#485f73; --guide-accent:#086b93; --guide-border:#cbd9e3; color:var(--guide-ink); font-size:16px; line-height:1.7; max-width:1120px; margin:0 auto; }
+.user-guide * { box-sizing:border-box; }
+.guide-intro { padding:28px; background:#eaf5fb; border:1px solid var(--guide-border); border-radius:14px; }
+.guide-intro h2 { font-size:clamp(24px,3vw,34px); margin:8px 0; }
+.guide-intro p { max-width:75ch; }
+.guide-tools { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin:24px 0; }
+.guide-tools label { display:grid; gap:6px; flex:1 1 280px; font-weight:600; }
+.user-guide input[type=search] { min-width:0; width:100%; padding:12px; border:1px solid #71879a; border-radius:8px; font:inherit; background:white; color:var(--guide-ink); }
+.user-guide button { min-height:44px; border:1px solid #71879a; border-radius:8px; padding:9px 16px; font:inherit; color:var(--guide-ink); background:#fff; cursor:pointer; }
+.user-guide button:hover:not(:disabled), .user-guide summary:hover { background:#edf5fa; }
+.user-guide button:disabled { opacity:.55; cursor:not-allowed; }
+.user-guide :is(button,input,summary):focus-visible { outline:3px solid var(--guide-accent); outline-offset:3px; }
+.guide-progress { padding:16px 20px; background:white; border-radius:10px; border:1px solid var(--guide-border); }
+.guide-progress progress { display:block; width:100%; height:12px; margin-top:10px; accent-color:var(--guide-accent); }
+.guide-progress p,.user-guide footer { font-size:14px; color:var(--guide-muted); }
+.guide-topics { display:grid; gap:12px; }
+.guide-card { border:1px solid var(--guide-border); border-radius:12px; background:#fff; overflow:hidden; }
+.guide-card summary { cursor:pointer; padding:18px 20px; min-height:48px; }
+.guide-card summary strong { font-size:18px; }
+.guide-card summary small { display:block; font-size:15px; color:var(--guide-muted); margin-left:40px; }
+.guide-number { display:inline-block; margin-right:12px; font-weight:700; color:var(--guide-accent); }
+.guide-body { padding:0 24px 24px; border-top:1px solid var(--guide-border); }
+.guide-body ol { padding-left:26px; }
+.guide-body li { padding:8px 0; }
+.guide-body label { display:flex; gap:12px; align-items:flex-start; cursor:pointer; min-height:44px; }
+.guide-body input[type=checkbox] { width:22px; height:22px; flex-shrink:0; margin-top:4px; accent-color:var(--guide-accent); }
+.guide-expected,.guide-warning { padding:14px; border-radius:8px; }
+.guide-expected { background:#edf7f1; color:#245338; }
+.guide-warning { background:#fff5df; color:#67460b; }
+.user-guide button.guide-primary { background:var(--guide-accent); color:white; border-color:var(--guide-accent); }
+.user-guide button.guide-primary:hover { background:#075473; }
+.guide-simulator,.guide-faq { margin-top:24px; padding:24px; }
+.guide-state { display:flex; flex-wrap:wrap; gap:16px; background:#eaf5fb; border-radius:8px; padding:16px; margin:16px 0; }
+.guide-sim-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.guide-faq details { border-top:1px solid var(--guide-border); }
+.guide-faq p { padding:0 20px 12px; }
+.user-guide footer { margin:24px 0; }
+@media(max-width:600px) { .guide-intro,.guide-body,.guide-simulator,.guide-faq { padding:16px; } .guide-tools button { flex:1 1 140px; } .guide-card summary { padding:16px; } .guide-sim-actions button { width:100%; } }
+@media print { body:has(.user-guide) * { visibility:hidden; } body:has(.user-guide) .user-guide, body:has(.user-guide) .user-guide * { visibility:visible; } .user-guide { position:absolute; top:0; left:0; width:100%; max-width:none; color:black; } .user-guide .guide-tools,.user-guide .guide-progress,.user-guide button,.user-guide input { display:none!important; } .user-guide details::details-content { display:block; content-visibility:visible; } .user-guide details > * { display:block; } .guide-card { break-inside:avoid; margin-bottom:12px; } }

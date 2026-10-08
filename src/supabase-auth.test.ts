@@ -45,13 +45,13 @@ describe("Supabase access mapping", () => {
     });
     expect(access.sites[0]).toMatchObject({
       id: "SITE-001",
-      assetCount: 142,
-      openWorkOrders: 3,
-      pmCompliance: 92,
+      assetCount: null,
+      openWorkOrders: null,
+      pmCompliance: null,
     });
   });
 
-  it("uses safe zero values for a Jobsite without local dashboard data", () => {
+  it("keeps unknown online metrics distinct from a verified zero", () => {
     const rows: JobsiteRow[] = [
       {
         id: "SITE-999",
@@ -69,9 +69,9 @@ describe("Supabase access mapping", () => {
     expect(access.user.initials).toBe("S");
     expect(access.user.title).toBe("Field Engineer");
     expect(access.sites[0]).toMatchObject({
-      assetCount: 0,
-      openWorkOrders: 0,
-      pmCompliance: 0,
+      assetCount: null,
+      openWorkOrders: null,
+      pmCompliance: null,
     });
   });
 });

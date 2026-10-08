@@ -217,7 +217,8 @@
 .maint-form select:focus,
 .maint-form textarea:focus { border-color: #168b9b; box-shadow: 0 0 0 3px rgba(22, 139, 155, 0.12); outline: 0; }
 .maint-form-actions { align-items: center; border-top: 1px solid #e5ebf1; display: flex; gap: 9px; justify-content: flex-end; margin-top: 7px; padding-top: 18px; }
-.maint-form-error { background: #fff0f0; border-radius: 7px; color: #b52e35; font-size: 12px; margin: 0; padding: 10px 12px; }
+.maint-form-error { background: #fff0f0; border-radius: 7px; color: #b52e35; font-size: 16px; line-height: 1.6; margin: 0; padding: 14px 16px; }
+.maint-form-error button { min-height: 44px; white-space: normal; max-width: 100%; }
 
 .maint-photo-strip { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); padding: 0 25px 20px; }
 .maint-form .maint-photo-strip { padding: 0; }
@@ -297,4 +298,15 @@
   .maint-overview-metrics strong,
   .maint-plan-summary > div > strong,
   .maint-report-kpis strong { font-size: 28px; }
+}
+.maint-command-fields { display: contents; border: 0; padding: 0; margin: 0; }
+.maint-review-metadata { background: #f2f7fc; border: 1px solid #dfe6ed; border-radius: 10px; padding: 16px; color: #20364d; }
+.maint-review-metadata h3 { font-size: 18px; margin: 0 0 10px; }
+.maint-review-metadata p { font-size: 16px; line-height: 1.6; margin: 6px 0; }
+.maint-detail-modal > .maint-review-metadata { margin: 20px 24px; }
+.cmms-live-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
 }

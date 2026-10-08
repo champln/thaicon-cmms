@@ -32,16 +32,24 @@ function wrapText(context: CanvasRenderingContext2D, value: string, maxWidth: nu
 }
 
 function loadImage(src: string) {
-  return new Promise<HTMLImageElement | null>((resolve) => {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
-    const timeout = window.setTimeout(() => resolve(null), 2500);
+    // Signed Storage URLs authorize in the URL, not browser cookies. Setting
+    // CORS before src keeps remote proof images from tainting the PDF canvas.
+    image.crossOrigin = "anonymous";
+    const fail = () => reject(new Error("โหลดภาพหลักฐานไม่สำเร็จ กรุณาโหลดรายงานใหม่เพื่อต่ออายุลิงก์ภาพ แล้วลองส่งออก PDF อีกครั้ง"));
+    const timeout = window.setTimeout(() => {
+      image.onload = null;
+      image.onerror = null;
+      fail();
+    }, 10000);
     image.onload = () => {
       window.clearTimeout(timeout);
       resolve(image);
     };
     image.onerror = () => {
       window.clearTimeout(timeout);
-      resolve(null);
+      fail();
     };
     image.src = src;
   });
@@ -66,6 +74,7 @@ export async function downloadMaintenancePdf({
   subtitle,
   sections,
   photos = [],
+  assertCurrent,
 }: {
   filename: string;
   documentTitle: string;
@@ -73,12 +82,15 @@ export async function downloadMaintenancePdf({
   subtitle: string;
   sections: PdfSection[];
   photos?: Array<{ name: string; dataUrl: string }>;
+  assertCurrent?: () => void;
 }) {
+  assertCurrent?.();
   const { jsPDF } = await import("jspdf");
   await document.fonts.ready;
   const pages: HTMLCanvasElement[] = [];
   let { canvas, context } = createPage();
   let y = MARGIN;
+  const exportedAt = new Date().toISOString();
 
   const finishPage = () => {
     context.strokeStyle = "#dce4ec";
@@ -87,8 +99,8 @@ export async function downloadMaintenancePdf({
     context.lineTo(PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 72);
     context.stroke();
     context.fillStyle = "#738094";
-    context.font = "20px Anuphan, Arial, sans-serif";
-    context.fillText("เอกสารสร้างจากระบบ ThaiCon CMMS", MARGIN, PAGE_HEIGHT - 54);
+    context.font = "18px Anuphan, Arial, sans-serif";
+    context.fillText(`ThaiCon CMMS | เวลาออกไฟล์ UTC ${exportedAt} | หน้า ${pages.length + 1}`, MARGIN, PAGE_HEIGHT - 54);
     pages.push(canvas);
   };
 
@@ -112,10 +124,11 @@ export async function downloadMaintenancePdf({
   y += 68;
   context.fillStyle = "#5f6f82";
   context.font = "25px Anuphan, Arial, sans-serif";
-  context.fillText(subtitle, MARGIN, y);
+  const subtitleLines = wrapText(context, subtitle, CONTENT_WIDTH);
+  subtitleLines.forEach((line,index) => context.fillText(line,MARGIN,y + index*36));
+  y += subtitleLines.length*36;
   context.font = "700 25px Anuphan, Arial, sans-serif";
-  const numberWidth = context.measureText(documentNumber).width;
-  context.fillText(documentNumber, PAGE_WIDTH - MARGIN - numberWidth, y);
+  context.fillText(documentNumber, MARGIN, y);
   y += 52;
   context.fillStyle = "#1262a3";
   context.fillRect(MARGIN, y, CONTENT_WIDTH, 7);
@@ -124,21 +137,27 @@ export async function downloadMaintenancePdf({
   for (const section of sections) {
     context.font = "26px Anuphan, Arial, sans-serif";
     const valueLines = wrapText(context, section.value || "-", CONTENT_WIDTH - 330);
-    const sectionHeight = Math.max(58, valueLines.length * 38 + 25);
-    if (y + sectionHeight > PAGE_HEIGHT - 110) nextPage();
-
-    context.fillStyle = "#536477";
-    context.font = "700 24px Anuphan, Arial, sans-serif";
-    context.fillText(section.label, MARGIN, y + 13);
-    context.fillStyle = "#152235";
-    context.font = "26px Anuphan, Arial, sans-serif";
-    valueLines.forEach((line, index) => context.fillText(line, MARGIN + 310, y + 11 + (index * 38)));
-    context.strokeStyle = "#dfe6ed";
-    context.beginPath();
-    context.moveTo(MARGIN, y + sectionHeight);
-    context.lineTo(PAGE_WIDTH - MARGIN, y + sectionHeight);
-    context.stroke();
-    y += sectionHeight;
+    let offset = 0;
+    while (offset < valueLines.length) {
+      if (y + 63 > PAGE_HEIGHT - 110) nextPage();
+      const available = Math.max(1, Math.floor((PAGE_HEIGHT - 110 - y - 25) / 38));
+      const segment = valueLines.slice(offset, offset + available);
+      const sectionHeight = Math.max(58, segment.length * 38 + 25);
+      context.fillStyle = "#536477";
+      context.font = "700 24px Anuphan, Arial, sans-serif";
+      context.fillText(section.label + (offset ? " (ต่อ)" : ""), MARGIN, y + 13, 280);
+      context.fillStyle = "#152235";
+      context.font = "26px Anuphan, Arial, sans-serif";
+      segment.forEach((line, index) => context.fillText(line, MARGIN + 310, y + 11 + (index * 38)));
+      context.strokeStyle = "#dfe6ed";
+      context.beginPath();
+      context.moveTo(MARGIN, y + sectionHeight);
+      context.lineTo(PAGE_WIDTH - MARGIN, y + sectionHeight);
+      context.stroke();
+      y += sectionHeight;
+      offset += segment.length;
+      if (offset < valueLines.length) nextPage();
+    }
   }
 
   if (photos.length) {
@@ -158,15 +177,10 @@ export async function downloadMaintenancePdf({
       context.strokeStyle = "#dfe6ed";
       context.strokeRect(x, y, cardWidth, cardHeight);
       const image = await loadImage(photos[index].dataUrl);
-      if (image) {
-        const scale = Math.min((cardWidth - 20) / image.width, 260 / image.height);
-        const drawWidth = image.width * scale;
-        const drawHeight = image.height * scale;
-        context.drawImage(image, x + ((cardWidth - drawWidth) / 2), y + 10 + ((260 - drawHeight) / 2), drawWidth, drawHeight);
-      } else {
-        context.fillStyle = "#eef3f7";
-        context.fillRect(x + 10, y + 10, cardWidth - 20, 260);
-      }
+      const scale = Math.min((cardWidth - 20) / image.width, 260 / image.height);
+      const drawWidth = image.width * scale;
+      const drawHeight = image.height * scale;
+      context.drawImage(image, x + ((cardWidth - drawWidth) / 2), y + 10 + ((260 - drawHeight) / 2), drawWidth, drawHeight);
       context.fillStyle = "#66768a";
       context.font = "20px Anuphan, Arial, sans-serif";
       context.fillText(photos[index].name, x + 12, y + 286, cardWidth - 24);
@@ -180,5 +194,6 @@ export async function downloadMaintenancePdf({
     if (index > 0) pdf.addPage();
     pdf.addImage(page.toDataURL("image/jpeg", 0.94), "JPEG", 0, 0, 210, 297);
   });
+  assertCurrent?.();
   pdf.save(filename);
 }

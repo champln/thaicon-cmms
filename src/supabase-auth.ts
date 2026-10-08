@@ -1,9 +1,9 @@
 import {
-  jobsites as demoJobsites,
   roleLabels,
 } from "./access";
 import type { DemoUser, Jobsite, UserRole } from "./access";
 import { supabase } from "./supabase";
+import { readAllPages } from "./read-all-pages";
 
 export type SupabaseAccess = {
   user: DemoUser;
@@ -59,15 +59,14 @@ export function mapSupabaseAccess(
   rows: JobsiteRow[],
 ): SupabaseAccess {
   const sites = rows.map((row) => {
-    const demoSite = demoJobsites.find((site) => site.id === row.id);
     return {
       id: row.id,
       name: row.name,
       province: row.province,
       type: row.site_type,
-      assetCount: demoSite?.assetCount ?? 0,
-      openWorkOrders: demoSite?.openWorkOrders ?? 0,
-      pmCompliance: demoSite?.pmCompliance ?? 0,
+      assetCount: null,
+      openWorkOrders: null,
+      pmCompliance: null,
     } satisfies Jobsite;
   });
 
@@ -101,18 +100,19 @@ export async function loadSupabaseAccess(userId: string): Promise<SupabaseAccess
     throw new SupabaseAccessError("บัญชีนี้ถูกระงับการใช้งาน");
   }
 
-  const { data: siteRows, error: siteError } = await client
-    .from("jobsites")
-    .select("id, name, province, site_type")
-    .eq("is_active", true)
-    .order("name")
-    .returns<JobsiteRow[]>();
-
-  if (siteError) {
-    throw new SupabaseAccessError("ไม่สามารถโหลดรายการไซต์ได้", siteError);
+  try {
+    const siteRows = await readAllPages<JobsiteRow>((start, end) => client
+      .from("jobsites")
+      .select("id, name, province, site_type")
+      .eq("is_active", true)
+      .order("name")
+      .order("id")
+      .range(start, end)
+      .returns<JobsiteRow[]>());
+    return mapSupabaseAccess(profile, siteRows);
+  } catch (error) {
+    throw new SupabaseAccessError("ไม่สามารถโหลดรายการไซต์ได้", error);
   }
-
-  return mapSupabaseAccess(profile, siteRows ?? []);
 }
 
 export async function signInWithSupabase(

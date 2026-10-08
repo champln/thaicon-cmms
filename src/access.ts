@@ -5,9 +5,9 @@ export type Jobsite = {
   name: string;
   province: string;
   type: string;
-  assetCount: number;
-  openWorkOrders: number;
-  pmCompliance: number;
+  assetCount: number | null;
+  openWorkOrders: number | null;
+  pmCompliance: number | null;
 };
 
 export type DemoUser = {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import CMMSApp from "./CMMSApp";
 import {
@@ -14,7 +14,7 @@ import {
   loadMasterData,
   saveMasterData,
 } from "./master-data";
-import { loadSupabaseAdminMasterData, loadSupabaseAssets } from "./admin-supabase";
+import { loadSupabaseAdminMasterData, loadSupabaseAssets, loadSupabaseLocations } from "./admin-supabase";
 import { isSupabaseConfigured, supabase } from "./supabase";
 import {
   restoreSupabaseAccess,
@@ -202,9 +202,9 @@ function JobsiteSelector({
               <h2>{site.name}</h2>
               <p>{site.type} • {site.province}</p>
               <dl>
-                <div><dt>เครื่องจักร</dt><dd>{site.assetCount}</dd></div>
-                <div><dt>ใบงานเปิด</dt><dd>{site.openWorkOrders}</dd></div>
-                <div><dt>PM</dt><dd>{site.pmCompliance}%</dd></div>
+                <div><dt>เครื่องจักร</dt><dd>{site.assetCount ?? "—"}</dd></div>
+                <div><dt>ใบงานเปิด</dt><dd>{site.openWorkOrders ?? "—"}</dd></div>
+                <div><dt>PM (ค่าที่กำหนด)</dt><dd>{site.pmCompliance == null ? "—" : `${site.pmCompliance}%`}</dd></div>
               </dl>
               <span className="site-option-action">เข้าสู่ไซต์ <b>→</b></span>
             </button>
@@ -234,6 +234,8 @@ export default function App() {
   const [supabaseSites, setSupabaseSites] = useState<Jobsite[]>([]);
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured);
   const [authError, setAuthError] = useState("");
+  const [masterLoad, setMasterLoad] = useState<"loading" | "ready" | "error">("ready");
+  const masterAttempt = useRef(0);
   const onlineMode = isSupabaseConfigured && sessionMode === "supabase";
 
   const allowedSites = useMemo(
@@ -249,30 +251,58 @@ export default function App() {
   const selectedSite = allowedSites.find((site) => site.id === jobsiteId) ?? null;
 
   const hydrateSupabaseMasterData = async (access: SupabaseAccess) => {
+    const attempt = ++masterAttempt.current;
+    setMasterLoad("loading");
+    setAuthError("");
     setSessionMode("supabase");
     setUser(access.user);
     setSupabaseSites(access.sites);
     try {
       if (access.user.role === "admin") {
         const remoteMasterData = await loadSupabaseAdminMasterData();
+        if (attempt !== masterAttempt.current) return;
         setMasterData(remoteMasterData);
         setSupabaseSites(remoteMasterData.jobsites.filter((site) => site.active));
+        setMasterLoad("ready");
         return;
       }
-      const assets = await loadSupabaseAssets(access.sites.map((site) => site.id));
+      const [assets, locations] = await Promise.all([loadSupabaseAssets(access.sites.map((site) => site.id)), loadSupabaseLocations(access.sites.map((site) => site.id))]);
+      if (attempt !== masterAttempt.current) return;
+      const confirmedSites = access.sites.map((site) => ({ ...site, assetCount: assets.filter((asset) => asset.active && asset.jobsiteId === site.id).length, active: true }));
       setMasterData({
-        jobsites: access.sites.map((site) => ({ ...site, assetCount: assets.filter((asset) => asset.active && asset.jobsiteId === site.id).length, active: true })),
+        jobsites: confirmedSites,
         users: [{ ...access.user, initials: initialsFromName(access.user.displayName), active: true }],
         assets,
+        locations,
       });
+      setSupabaseSites(confirmedSites);
+      setMasterLoad("ready");
     } catch (error) {
+      if (attempt !== masterAttempt.current) return;
       console.error("Unable to load Supabase master data", error);
-      setMasterData({
-        jobsites: access.sites.map((site) => ({ ...site, active: true })),
-        users: [{ ...access.user, active: true }],
-        assets: [],
-      });
-      setAuthError("เข้าสู่ระบบแล้ว แต่โหลดข้อมูลไซต์หรือเครื่องจักรไม่ครบ กรุณาตรวจสอบ migration และ Edge Function");
+      setAuthError("โหลดข้อมูลไซต์หรือเครื่องจักรไม่ครบ กรุณาลองใหม่ หากยังไม่สำเร็จให้ติดต่อผู้ดูแลระบบ");
+      setMasterLoad("error");
+    }
+  };
+
+  const retryMasterData = async () => {
+    const attempt = ++masterAttempt.current;
+    setMasterLoad("loading");
+    try {
+      // Refresh actual permissions before retrying; never reuse cached assignments.
+      const access = await restoreSupabaseAccess();
+      if (attempt !== masterAttempt.current) return;
+      if (!access) {
+        setUser(null);
+        setSupabaseSites([]);
+        setJobsiteId(null);
+        return;
+      }
+      await hydrateSupabaseMasterData(access);
+    } catch (error) {
+      if (attempt !== masterAttempt.current) return;
+      setAuthError(error instanceof SupabaseAccessError ? error.userMessage : "โหลดทะเบียนข้อมูลไม่สำเร็จ กรุณาลองใหม่");
+      setMasterLoad("error");
     }
   };
 
@@ -299,6 +329,7 @@ export default function App() {
 
     return () => {
       active = false;
+      masterAttempt.current += 1;
     };
   }, []);
 
@@ -306,6 +337,7 @@ export default function App() {
     if (!supabase) return;
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_OUT") return;
+      masterAttempt.current += 1;
       setUser(null);
       setSupabaseSites([]);
       setJobsiteId(null);
@@ -324,7 +356,7 @@ export default function App() {
 
   useEffect(() => {
     if (onlineMode) {
-      if (!user || user.role !== "admin") return;
+      if (masterLoad !== "ready" || !user || user.role !== "admin") return;
       const updatedUser = masterData.users.find((item) => item.id === user.id && item.active);
       if (updatedUser && updatedUser !== user) setUser(updatedUser);
       return;
@@ -338,7 +370,7 @@ export default function App() {
     } else if (updatedUser !== user) {
       setUser(updatedUser);
     }
-  }, [masterData, onlineMode, user]);
+  }, [masterData, masterLoad, onlineMode, user]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0 });
@@ -348,6 +380,8 @@ export default function App() {
     setAuthError("");
     const demoUser = authenticateDemoUser(identifier, password);
     if (demoUser) {
+      masterAttempt.current += 1;
+      setMasterLoad("ready");
       const demoMasterData = loadMasterData();
       setSessionMode("demo");
       setMasterData(demoMasterData);
@@ -374,6 +408,7 @@ export default function App() {
   };
 
   const logout = async () => {
+    masterAttempt.current += 1;
     if (onlineMode) {
       try {
         await signOutFromSupabase();
@@ -411,6 +446,22 @@ export default function App() {
     );
   }
 
+  if (onlineMode && masterLoad !== "ready") {
+    return (
+      <main className="access-loading" aria-live="polite" aria-busy={masterLoad === "loading"}>
+        <strong>ThaiCon CMMS</strong>
+        {masterLoad === "loading" ? <span>กำลังโหลดทะเบียนข้อมูลออนไลน์...</span> : (
+          <>
+            <p role="alert">{authError}</p>
+            <p>ยังไม่แสดงจำนวนหรือรายการจนกว่าจะโหลดข้อมูลครบ ข้อมูลที่โหลดสำเร็จก่อนหน้านี้ไม่ได้ถูกลบ</p>
+            <button className="access-submit" type="button" onClick={() => void retryMasterData()}>ลองโหลดอีกครั้ง</button>
+          </>
+        )}
+        <button className="access-submit" type="button" onClick={() => void logout()}>ออกจากระบบ</button>
+      </main>
+    );
+  }
+
   if (!selectedSite) {
     return (
       <JobsiteSelector
@@ -424,6 +475,7 @@ export default function App() {
 
   return (
     <CMMSApp
+      key={`${sessionMode}:${user.id}`}
       activeJobsite={selectedSite}
       allowedJobsites={allowedSites}
       currentUser={user}

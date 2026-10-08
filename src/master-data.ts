@@ -14,7 +14,33 @@ export type ManagedAsset = {
   nextPm: string;
   sensor: string;
   active: boolean;
+  building?: string;
+  floor?: string;
+  room?: string;
+  manufacturer?: string;
+  model?: string;
+  serialNumber?: string;
+  locationId?: string | null;
 };
+
+export type AssetLocation = { id: string; jobsiteId: string; building: string; floor: string; room: string };
+
+export function locationLabel(location: Pick<AssetLocation, "building" | "floor" | "room">) {
+  return [location.building, location.floor, location.room].filter(Boolean).join(" • ");
+}
+
+export function validateLocation(location: AssetLocation) {
+  if (!location.building.trim()) throw new Error("กรุณาระบุอาคาร");
+  if (location.room && !location.floor) throw new Error("กรุณาระบุชั้นก่อนระบุห้อง");
+  if ([location.building, location.floor, location.room].some((v) => v !== v.trim() || v.length > 200)) throw new Error("ตำแหน่งต้องไม่เกิน 200 ตัวอักษรและไม่มีช่องว่างหัวท้าย");
+}
+
+export function resolveAssetLocation(asset: ManagedAsset, locations: AssetLocation[]): ManagedAsset {
+  if (!asset.locationId) return { ...asset, locationId: null };
+  const location = locations.find((item) => item.id === asset.locationId && item.jobsiteId === asset.jobsiteId);
+  if (!location) throw new Error("ตำแหน่งติดตั้งต้องอยู่ในไซต์เดียวกับเครื่องจักร");
+  return { ...asset, building: location.building, floor: location.floor, room: location.room, location: locationLabel(location) };
+}
 
 export type ManagedJobsite = Jobsite & { active: boolean };
 export type ManagedUser = DemoUser & { active: boolean; email?: string };
@@ -23,6 +49,7 @@ export type MasterDataState = {
   jobsites: ManagedJobsite[];
   users: ManagedUser[];
   assets: ManagedAsset[];
+  locations: AssetLocation[];
 };
 
 const STORAGE_KEY = "thaicon-cmms-master-data-v1";
@@ -41,6 +68,7 @@ export function buildDefaultMasterData(): MasterDataState {
     jobsites: jobsites.map((site) => ({ ...site, active: true })),
     users: demoUsers.map((user) => ({ ...user, active: true })),
     assets: defaultAssets.map((asset) => ({ ...asset })),
+    locations: [],
   };
 }
 
@@ -53,6 +81,7 @@ export function normalizeMasterData(value: unknown): MasterDataState {
     jobsites: parsed.jobsites.map((site) => ({ ...site, active: site.active !== false })),
     users: parsed.users.map((user) => ({ ...user, active: user.active !== false })),
     assets: parsed.assets.map((asset) => ({ ...asset, active: asset.active !== false })),
+    locations: Array.isArray(parsed.locations) ? parsed.locations : [],
   };
 }
 

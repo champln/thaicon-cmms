@@ -6,6 +6,15 @@ import {
   summarizePlan,
 } from "./maintenance";
 import type { MaintenancePlan, ServiceReport } from "./maintenance";
+import { buildDefaultMasterData } from "./master-data";
+
+it("new Demo report and repair fixtures use assets from the same site", () => {
+  const master = buildDefaultMasterData(); const state = buildDemoMaintenanceState();
+  for (const record of [...state.serviceReports, ...state.repairRequests]) {
+    expect(master.assets.find(asset => asset.id === record.assetId)?.jobsiteId).toBe(record.jobsiteId);
+  }
+  expect(state.serviceReports.filter(report => report.workOrderId).every(report => report.jobsiteId === "SITE-001" && report.assetId === "CR-DP-02")).toBe(true);
+});
 
 const plan: MaintenancePlan = {
   id: "PLAN-TEST",
@@ -58,9 +67,17 @@ describe("maintenance plan cycles", () => {
   });
 
   it("keeps the annual target exact when it does not divide evenly", () => {
-    const cycles = createPlanCycles({ ...plan, annualTarget: 100, cycleMonths: 3 });
+    const cycles = createPlanCycles({ ...plan, annualTarget: 101, cycleMonths: 3 });
     expect(cycles).toHaveLength(4);
-    expect(cycles.reduce((total, cycle) => total + cycle.target, 0)).toBe(100);
+    expect(cycles.map(cycle => cycle.target)).toEqual([25, 25, 25, 26]);
+    expect(cycles.reduce((total, cycle) => total + cycle.target, 0)).toBe(101);
+  });
+  it("retains small annual targets and cycle order across December", () => {
+    const cycles = createPlanCycles({ ...plan, annualTarget: 1, startMonth: 7 });
+    expect(cycles.map(cycle => cycle.target)).toEqual([...Array(11).fill(0), 1]);
+    expect(cycles.map(cycle => cycle.startMonth)).toEqual([7,8,9,10,11,12,1,2,3,4,5,6]);
+    const quarterly = createPlanCycles({ ...plan, startMonth: 11, cycleMonths: 3 });
+    expect(quarterly[0]).toMatchObject({ startMonth: 11, endMonth: 1 });
   });
 });
 

@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
+import { readAllPages, readAllSitePages } from "./read-all-pages";
 import type {
   MaintenancePlan,
+  PlanCycle,
   MaintenanceState,
   RepairRequest,
   ReportAttachment,
@@ -19,18 +21,20 @@ function safeFileName(value: string) {
   return value.normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "photo";
 }
 
-function mapPlan(row: Record<string, unknown>): MaintenancePlan {
+export function mapSupabasePlan(row: Record<string, unknown>, cycles?: Record<string, unknown>[]): MaintenancePlan {
   return {
     id: String(row.id), jobsiteId: String(row.jobsite_id), name: String(row.name), serviceType: String(row.service_type),
     year: Number(row.plan_year), annualTarget: Number(row.annual_target), cycleMonths: Number(row.cycle_months) as 1 | 2 | 3,
     startMonth: Number(row.start_month), status: row.status as MaintenancePlan["status"], createdBy: String(row.created_by),
-    updatedAt: String(row.updated_at),
+    updatedAt: String(row.updated_at), version: typeof row.version === "number" ? row.version : undefined,
+    cycles: cycles?.map(c => ({ id: String(c.id), planId: String(c.plan_id), sequence: Number(c.sequence), label: String(c.label), startMonth: Number(c.start_month), endMonth: Number(c.end_month), target: Number(c.target) } satisfies PlanCycle)),
   };
 }
 
-function mapReport(row: Record<string, unknown>, attachments: ReportAttachment[]): ServiceReport {
+export function mapSupabaseReport(row: Record<string, unknown>, attachments: ReportAttachment[]): ServiceReport {
   return {
     id: String(row.id), jobsiteId: String(row.jobsite_id), planId: String(row.plan_id), cycleId: String(row.cycle_id),
+    version: typeof row.version === "number" ? row.version : undefined,
     workOrderId: row.work_order_id ? String(row.work_order_id) : null, assetId: String(row.asset_id), assetName: String(row.asset_name),
     serviceDate: String(row.service_date), quantity: Number(row.quantity), technicianName: String(row.technician_name),
     customerName: String(row.customer_name), workPerformed: String(row.work_performed), findings: String(row.findings),
@@ -41,10 +45,11 @@ function mapReport(row: Record<string, unknown>, attachments: ReportAttachment[]
   };
 }
 
-function mapRepair(row: Record<string, unknown>): RepairRequest {
+export function mapSupabaseRepair(row: Record<string, unknown>): RepairRequest {
   return {
     id: String(row.id), jobsiteId: String(row.jobsite_id), serviceReportId: row.service_report_id ? String(row.service_report_id) : null,
     assetId: String(row.asset_id), assetName: String(row.asset_name), requestedDate: String(row.requested_date), title: String(row.title),
+    version: typeof row.version === "number" ? row.version : undefined,
     description: String(row.description), priority: row.priority as RepairRequest["priority"], status: row.status as RepairRequest["status"],
     reportedBy: String(row.reported_by), resolution: String(row.resolution ?? ""), createdBy: String(row.created_by),
     createdAt: String(row.created_at), updatedAt: String(row.updated_at),
@@ -54,23 +59,26 @@ function mapRepair(row: Record<string, unknown>): RepairRequest {
 export async function loadSupabaseMaintenanceState(jobsiteIds: string[]): Promise<MaintenanceState> {
   const client = requireClient();
   if (!jobsiteIds.length) return { plans: [], serviceReports: [], repairRequests: [] };
-  const [plansResult, reportsResult, repairsResult] = await Promise.all([
-    client.from("maintenance_plans").select("*").in("jobsite_id", jobsiteIds).order("plan_year", { ascending: false }),
-    client.from("service_reports").select("*").in("jobsite_id", jobsiteIds).order("service_date", { ascending: false }),
-    client.from("repair_requests").select("*").in("jobsite_id", jobsiteIds).order("requested_date", { ascending: false }),
+  const [plans, reports, repairs] = await Promise.all([
+    readAllSitePages(jobsiteIds, (ids, start, end) => client.from("maintenance_plans").select("*").in("jobsite_id", ids).order("plan_year", { ascending: false }).order("id").range(start, end)),
+    readAllSitePages(jobsiteIds, (ids, start, end) => client.from("service_reports").select("*").in("jobsite_id", ids).order("service_date", { ascending: false }).order("id").range(start, end)),
+    readAllSitePages(jobsiteIds, (ids, start, end) => client.from("repair_requests").select("*").in("jobsite_id", ids).order("requested_date", { ascending: false }).order("id").range(start, end)),
   ]);
-  if (plansResult.error) throw plansResult.error;
-  if (reportsResult.error) throw reportsResult.error;
-  if (repairsResult.error) throw repairsResult.error;
-
-  const reportIds = (reportsResult.data ?? []).map((row) => String(row.id));
-  const attachmentRows = reportIds.length
-    ? await client.from("service_report_attachments").select("*").in("service_report_id", reportIds)
-    : { data: [], error: null };
-  if (attachmentRows.error) throw attachmentRows.error;
+  const reportIds = reports.map((row) => String(row.id));
+  const planIds = plans.map(row => String(row.id)), cycleRows: Record<string, unknown>[] = [];
+  for (let offset = 0; offset < planIds.length; offset += 200) {
+    const query = client.from("plan_cycles").select("*").in("plan_id", planIds.slice(offset, offset + 200)).order("sequence").order("id");
+    cycleRows.push(...await readAllPages((start,end) => query.range(start,end)));
+  }
+  const attachmentRows: Record<string, unknown>[] = [];
+  // Bound URL size and paginate metadata instead of silently truncating it.
+  for (let offset = 0; offset < reportIds.length; offset += 200) {
+    const query = client.from("service_report_attachments").select("*").in("service_report_id", reportIds.slice(offset, offset + 200)).order("id");
+    attachmentRows.push(...await readAllPages((start, end) => query.range(start, end)));
+  }
 
   const attachmentsByReport = new Map<string, ReportAttachment[]>();
-  await Promise.all((attachmentRows.data ?? []).map(async (row) => {
+  for (let offset = 0; offset < attachmentRows.length; offset += 8) await Promise.all(attachmentRows.slice(offset, offset + 8).map(async (row) => {
     const storagePath = String(row.storage_path);
     const signed = await client.storage.from(PHOTO_BUCKET).createSignedUrl(storagePath, 3600);
     if (signed.error) throw signed.error;
@@ -83,9 +91,9 @@ export async function loadSupabaseMaintenanceState(jobsiteIds: string[]): Promis
   }));
 
   return {
-    plans: (plansResult.data ?? []).map((row) => mapPlan(row)),
-    serviceReports: (reportsResult.data ?? []).map((row) => mapReport(row, attachmentsByReport.get(String(row.id)) ?? [])),
-    repairRequests: (repairsResult.data ?? []).map((row) => mapRepair(row)),
+    plans: plans.map(row => mapSupabasePlan(row, cycleRows.filter(c => c.plan_id === row.id))),
+    serviceReports: reports.map((row) => mapSupabaseReport(row, attachmentsByReport.get(String(row.id)) ?? [])),
+    repairRequests: repairs.map((row) => mapSupabaseRepair(row)),
   };
 }
 

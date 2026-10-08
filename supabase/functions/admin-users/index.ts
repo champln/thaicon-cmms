@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { readAllRows, readAllAuthUsers, resolveProfileEmails } from "../_shared/read-pages.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,13 +40,16 @@ Deno.serve(async (request) => {
 
     const payload = await request.json() as AdminUserPayload;
     if (payload.action === "list") {
-      const [{ data: profiles, error: profileError }, { data: assignments, error: assignmentError }, { data: authUsers, error: authError }] = await Promise.all([
-        admin.from("profiles").select("id, username, display_name, role, title, is_active").order("display_name"),
-        admin.from("user_jobsites").select("user_id, jobsite_id"),
-        admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+      const [profiles, assignments, authUsers] = await Promise.all([
+        readAllRows((start, end) => admin.from("profiles").select("id, username, display_name, role, title, is_active").order("display_name").order("id").range(start, end)),
+        readAllRows((start, end) => admin.from("user_jobsites").select("user_id, jobsite_id").order("user_id").order("jobsite_id").range(start, end)),
+        readAllAuthUsers((page, perPage) => admin.auth.admin.listUsers({ page, perPage })),
       ]);
-      if (profileError || assignmentError || authError) throw profileError ?? assignmentError ?? authError;
-      const emailById = new Map(authUsers.users.map((user) => [user.id, user.email ?? ""]));
+      const emailById = await resolveProfileEmails(profiles, authUsers, (id) => admin.auth.admin.getUserById(id));
+      // Service-role reads are not RLS-bound: recheck the real caller after paging.
+      const { data: currentUser, error: currentAuthError } = await admin.auth.getUser(token);
+      const { data: currentCaller, error: currentProfileError } = await admin.from("profiles").select("role, is_active").eq("id", callerData.user.id).single();
+      if (currentAuthError || currentProfileError || currentUser.user?.id !== callerData.user.id || !currentCaller?.is_active || currentCaller.role !== "admin") return json({ error: "Admin permission required" }, 403);
       return json({ profiles: (profiles ?? []).map((profile) => ({ ...profile, email: emailById.get(profile.id) ?? "" })), assignments });
     }
 

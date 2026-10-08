@@ -3,6 +3,8 @@ export type ReportStatus = "draft" | "submitted" | "approved" | "rejected";
 export type RepairStatus = "draft" | "open" | "in_progress" | "resolved" | "cancelled";
 
 export type MaintenancePlan = {
+  version?: number;
+  cycles?: PlanCycle[];
   id: string;
   jobsiteId: string;
   name: string;
@@ -36,6 +38,7 @@ export type ReportAttachment = {
 };
 
 export type ServiceReport = {
+  version?: number;
   id: string;
   jobsiteId: string;
   planId: string;
@@ -62,6 +65,7 @@ export type ServiceReport = {
 };
 
 export type RepairRequest = {
+  version?: number;
   id: string;
   jobsiteId: string;
   serviceReportId: string | null;
@@ -149,6 +153,7 @@ export function createUuid() {
 }
 
 export function createPlanCycles(plan: MaintenancePlan): PlanCycle[] {
+  if (plan.cycles) return plan.cycles.map(cycle => ({ ...cycle }));
   const count = Math.ceil(12 / plan.cycleMonths);
   const baseTarget = Math.floor(plan.annualTarget / count);
   let allocated = 0;
@@ -270,8 +275,8 @@ export function buildDemoMaintenanceState(): MaintenanceState {
         jobsiteId: plan.jobsiteId,
         planId: plan.id,
         cycleId: cycle.id,
-        workOrderId: cycleIndex === 6 ? "WO-2607-0147" : null,
-        assetId: ["AHU-OPD-01", "CR-DP-02", "FREEZER-PH-03", "CTRL-LAB-05", "AHU-ICU-04", "EXF-ER-06"][planIndex],
+        workOrderId: cycleIndex === 6 && plan.jobsiteId === "SITE-001" ? "WO-2607-0147" : null,
+        assetId: ["CR-DP-02", "AHU-OPD-01", "FREEZER-PH-03", "CTRL-LAB-05", "AHU-ICU-04", "EXF-ER-06"][planIndex],
         assetName: plan.name,
         serviceDate: `2026-${String(Math.min(cycle.startMonth, 8)).padStart(2, "0")}-${String(8 + cycleIndex).padStart(2, "0")}`,
         quantity: baseQuantity,
@@ -305,8 +310,8 @@ export function buildDemoMaintenanceState(): MaintenanceState {
       id: "RR-0001",
       jobsiteId: "SITE-001",
       serviceReportId: null,
-      assetId: "AHU-OPD-01",
-      assetName: "Air Handling Unit - OPD",
+      assetId: "CR-DP-02",
+      assetName: "Clean Room Differential Pressure",
       requestedDate: "2026-08-18",
       title: "ตรวจสอบเสียงมอเตอร์พัดลมผิดปกติ",
       description: "พบเสียงสั่นขณะเดินเครื่อง ต้องตรวจ Bearing และ Alignment",

@@ -1,0 +1,43 @@
+// Fresh Demo browser only; hold first import to prove final stale-export guard.
+import { pathToFileURL } from "node:url";
+import { mkdir } from "node:fs/promises";
+import path from "node:path";
+import assert from "node:assert/strict";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const output = path.resolve(process.argv[3]);
+await mkdir(output, { recursive: true });
+const browser = await (module.default ?? module).chromium.launch({ channel: "chrome", headless: true });
+try {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const page = await context.newPage(), errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.goto(process.env.TEST_DEMO_URL || "http://127.0.0.1:15181/");
+  await page.getByPlaceholder("เช่น admin").fill("admin");
+  await page.getByPlaceholder("กรอกรหัสผ่าน").fill("demo123");
+  await page.getByRole("button", { name: /^เข้าสู่ระบบ/ }).click();
+  await page.getByRole("button", { name: /SITE-001/ }).click();
+  await page.locator("nav").getByRole("button", { name: "ใบงาน", exact: true }).click();
+  let entered, release, downloads = 0;
+  const enter = new Promise(resolve => { entered = resolve; }), hold = new Promise(resolve => { release = resolve; });
+  page.on("download", () => downloads++);
+  await page.route(/\/src\/excel-export\.ts(?:\?|$)/, async route => { entered(); await hold; await route.continue(); });
+  await page.getByRole("button", { name: "รายงานวัสดุ Excel", exact: true }).click();
+  await enter;
+  await page.getByLabel("ค้นหาใบงาน", { exact: true }).fill("NO-MATCH");
+  release();
+  await page.getByRole("alert").filter({ hasText: "ข้อมูล ตัวกรอง หรือสิทธิ์ไซต์เปลี่ยนแล้ว" }).waitFor();
+  assert.equal(downloads, 0);
+  assert.equal(await page.getByRole("button", { name: "รายงานวัสดุ Excel", exact: true }).isEnabled(), true);
+  await page.unroute(/\/src\/excel-export\.ts(?:\?|$)/);
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "รายงานวัสดุ Excel", exact: true }).click();
+  await (await download).saveAs(path.join(output, "material-ledger-empty-demo.xlsx"));
+  await page.waitForFunction(() => document.querySelector('[aria-label="ส่งออกรายงานวัสดุตามตัวกรองใบงาน"]')?.getAttribute("aria-busy") === "false");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(500);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  assert.ok((await page.getByRole("button", { name: "รายงานวัสดุ Excel", exact: true }).boundingBox()).height >= 44);
+  await page.screenshot({ path: path.join(output, "material-ledger-mobile.png"), fullPage: true });
+  assert.deepEqual(errors, []);
+  console.log("PASS: held async export + changed filter yields no stale file; retry exports explicit empty selection; mobile 44px/no overflow/no JS errors");
+} finally { await browser.close(); }

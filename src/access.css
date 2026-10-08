@@ -163,9 +163,10 @@
 .site-option-action { display: flex; align-items: center; justify-content: space-between; color: #087cb9; font-size: 11px; font-weight: 800; }
 .site-option-action b { font-size: 18px; }
 
-.access-loading { min-height: 100vh; display: grid; place-content: center; gap: 7px; color: #748397; background: #f4f7fa; text-align: center; }
+.access-loading { min-height: 100vh; display: grid; place-content: center; gap: 12px; padding: 24px; box-sizing: border-box; color: #748397; background: #f4f7fa; text-align: center; }
+.access-loading > * { width: min(100%, 560px); margin-inline: auto; overflow-wrap: anywhere; }
 .access-loading strong { color: #071d44; font-size: 24px; }
-.access-loading span { font-size: 13px; }
+.access-loading span, .access-loading p { font-size: 16px; line-height: 1.6; }
 
 @media (max-width: 900px) {
   .access-shell { grid-template-columns: 1fr; }

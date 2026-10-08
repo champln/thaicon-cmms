@@ -1,7 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useDialogFocus } from "./use-dialog-focus";
+import { supabase } from "./supabase";
+import { watchWorkOrderUpdates, type OrderUpdateConnection } from "./work-order-updates";
+import { useSiteLiveUpdates } from "./use-site-live-updates";
+import { prepareLiveMaintenance } from "./live-maintenance-loader";
+import { mergeLiveMaintenance } from "./live-maintenance-state";
+import { mergeLiveAlarms } from "./live-alarm-state";
+import { mapSupabaseAlarm, type AlarmRow } from "./operations-supabase";
 import type { Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
 import IoTMonitor from "./IoTMonitor";
 import AdminWorkspace from "./AdminWorkspace";
+const UserGuide = lazy(() => import("./UserGuide"));
+const UatWorkspace = lazy(() => import("./UatWorkspace"));
+import AssetHistory from "./AssetHistory";
+import ExcelDownloadButton from "./ExcelDownloadButton";
+import { workOrderSheets } from "./work-order-excel";
+import OrderSummaryExport from "./OrderSummaryExport";
+import MaterialLedgerExport from "./MaterialLedgerExport";
+import SiteHistoryReport from "./SiteHistoryReport";
+import type { LiveScope } from "./live-snapshot-supabase";
+import AssetRegisterExport from "./AssetRegisterExport";
+import { filterRegisteredAssets } from "./asset-register-report";
+import { bangkokInputToInstant, orderTiming } from "./work-order-timing";
+import WorkOrderPdfButton from "./WorkOrderPdfButton";
+import { filterWorkOrders, orderCreatedDate } from "./work-order-filter";
 import { roleLabels } from "./access";
 import type { DemoUser, Jobsite, UserRole } from "./access";
 import {
@@ -18,8 +40,24 @@ import { loadSupabaseMaintenanceState, syncSupabaseMaintenanceState } from "./ma
 import type { AssetHealth, ManagedAsset, MasterDataState } from "./master-data";
 import { loadSupabaseOperationsState, syncSupabaseOperationsState } from "./operations-supabase";
 import type { OperationsState } from "./operations-supabase";
+import { loadDemoOperations, saveDemoOperations } from "./operations-demo";
+import WorkOrderActions from "./WorkOrderActions";
+import WorkOrderMaterials from "./WorkOrderMaterials";
+import { applyDemoMaterial, type MaterialRequest, type OrderMaterial } from "./work-order-materials";
+import { orderStage } from "./work-order-progress";
+import { applyDemoOrderCommand, type OrderHistoryItem } from "./work-order-demo";
+import { createOrderCommandRepository, OrderCommandError, type OrderCommandRequest } from "./work-order-command-supabase";
+import { createReportCommandRepository } from "./service-report-command-supabase";
+import { createRepairCommandRepository } from "./repair-command-supabase";
+import { createPlanCommandRepository, type PlanCommandState } from "./plan-command-supabase";
+import { operationSiteId, operationsForSite } from "./operation-site";
+import { createAlarmCommandRepository, createAlarmAcknowledgeOperation, AlarmCommandError } from "./alarm-command-supabase";
+import { legacyMaintenanceSlice, mergeLegacyMaintenanceBaseline, mergeConfirmedReport, mergeConfirmedRepair, mergeConfirmedPlan } from "./maintenance-command-mode";
+import type { ManagedUser } from "./master-data";
 
 type Page =
+  | "uat"
+  | "guide"
   | "dashboard"
   | "work-orders"
   | "pm"
@@ -43,12 +81,24 @@ export type WorkOrder = {
   assetId: string;
   assetName: string;
   site: string;
+  jobsiteId?: string;
   priority: Priority;
   status: WorkStatus;
   assignee: string;
   due: string;
   created: string;
+  createdAt?: string;
+  dueAt?: string | null;
+  assignedAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
   progress: number;
+  version?: number;
+  assigneeId?: string | null;
+  description?: string;
+  events?: OrderHistoryItem[];
+  historyStatus?: "loading" | "ready" | "error";
+  materials?: OrderMaterial[];
 };
 
 export type AlertItem = {
@@ -58,9 +108,13 @@ export type AlertItem = {
   detail: string;
   assetId: string;
   site: string;
+  jobsiteId?: string;
   time: string;
   value: string;
   acknowledged: boolean;
+  version?:number;
+  acknowledgedBy?:string;
+  acknowledgedAt?:string;
 };
 
 type PmItem = {
@@ -249,15 +303,19 @@ const navItems: { id: Page; label: string; icon: IconName }[] = [
   { id: "reports", label: "รายงาน", icon: "chart" },
   { id: "iot", label: "IoT Monitor", icon: "iot" },
   { id: "admin", label: "จัดการระบบ", icon: "user" },
+  { id: "guide", label: "คู่มือการใช้งาน", icon: "clipboard" },
+  { id: "uat", label: "ทดสอบระบบ UAT", icon: "clipboard" },
 ];
 
 const pagesByRole: Record<UserRole, Page[]> = {
   admin: navItems.map((item) => item.id),
-  engineer: ["service-reports"],
-  user: ["dashboard", "pm", "service-reports", "reports"],
+  engineer: ["work-orders", "service-reports", "repair-requests", "guide", "uat"],
+  user: ["dashboard", "work-orders", "pm", "service-reports", "repair-requests", "assets", "reports", "guide", "uat"],
 };
 
 const pageTitles: Record<Page, { title: string; subtitle: string }> = {
+  uat: { title: "ทดสอบระบบ UAT", subtitle: "ขั้นตอนทดสอบ บันทึกผลตามบัญชีและไซต์ และส่งออกให้ผู้ประสานงาน" },
+  guide: { title: "คู่มือการใช้งาน", subtitle: "ค้นหาวิธีใช้ เรียนรู้ทีละขั้น และลองตัวอย่างจำลอง" },
   dashboard: {
     title: "ภาพรวมการบำรุงรักษา",
     subtitle: "งาน เครื่องจักร และ Alarm ของไซต์ที่เลือก",
@@ -579,7 +637,7 @@ function DashboardPage({
   alerts: AlertItem[];
   schedule: PmItem[];
   siteAssets: Asset[];
-  pmCompliance: number;
+  pmCompliance: number | null;
   maintenanceState: MaintenanceState;
   jobsiteId: string;
   canOperate: boolean;
@@ -590,7 +648,9 @@ function DashboardPage({
   const openOrders = orders.filter((order) => order.status !== "เสร็จสิ้น");
   const criticalAlerts = alerts.filter((alert) => alert.level === "critical" && !alert.acknowledged);
   const watchedAssets = siteAssets.filter((asset) => asset.health !== "ปกติ");
-  const dueToday = openOrders.filter((order) => order.due.includes("วันนี้"));
+  const evaluatedAt = new Date().toISOString();
+  const dueToday = openOrders.filter((order) => orderTiming(order, evaluatedAt).dueToday);
+  const unknownDue = openOrders.filter((order) => orderTiming(order, evaluatedAt).unknownDue).length;
 
   return (
     <div className="cmms-dashboard-page">
@@ -629,15 +689,15 @@ function DashboardPage({
             icon="clipboard"
             label="ใบงานที่เปิดอยู่"
             value={String(openOrders.length)}
-            note={`${dueToday.length} งานครบกำหนดวันนี้`}
+            note={`${dueToday.length} งานครบกำหนดวันนี้ • ไม่ทราบวันกำหนด ${unknownDue} งาน`}
             tone="blue"
           />
         )}
         <KpiCard
           icon="calendar"
-          label="PM เดือนนี้"
-          value={`${pmCompliance}%`}
-          note="ผล PM ตามแผนประจำเดือน"
+          label={pmCompliance == null ? "PM เดือนนี้" : "PM (ค่าที่กำหนด)"}
+          value={pmCompliance == null ? "—" : `${pmCompliance}%`}
+          note={pmCompliance == null ? "ยังไม่มีผลคำนวณ PM ประจำเดือนที่ยืนยันแล้ว" : "ค่า PM ตัวอย่างในโหมด Demo"}
           tone="cyan"
         />
         {canOperate && (
@@ -767,27 +827,32 @@ function WorkOrdersPage({
   canOperate,
   onSelect,
   onCreate,
+  reportSite,
+  reportScope,
+  reportMode,
+  reportActor,
+  materialVerified,
 }: {
   orders: WorkOrder[];
   canOperate: boolean;
   onSelect: (order: WorkOrder) => void;
   onCreate: () => void;
+  reportSite: Jobsite;
+  reportScope: string;
+  reportMode: "online" | "demo";
+  reportActor: Pick<LiveScope, "userId" | "role">;
+  materialVerified: boolean;
 }) {
   const [status, setStatus] = useState<"ทั้งหมด" | WorkStatus>("ทั้งหมด");
   const [query, setQuery] = useState("");
-
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    return orders.filter((order) => {
-      const matchesStatus = status === "ทั้งหมด" || order.status === status;
-      const matchesQuery =
-        !normalized ||
-        `${order.id} ${order.title} ${order.assetId} ${order.site} ${order.assignee}`
-          .toLowerCase()
-          .includes(normalized);
-      return matchesStatus && matchesQuery;
-    });
-  }, [orders, query, status]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
+  const filters = { query, status, from, to, assigneeId };
+  const filtered = filterWorkOrders(orders, filters);
+  const assignees = [...new Map(orders.filter(o => o.assigneeId).map(o => [o.assigneeId!, o.assignee])).entries()];
+  const unknownDates = orders.filter(o => !orderCreatedDate(o)).length;
 
   return (
     <section className="cmms-panel cmms-page-panel cmms-work-orders-page">
@@ -821,7 +886,7 @@ function WorkOrdersPage({
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
-          <button className="cmms-secondary-button" type="button">
+          <button className="cmms-secondary-button" type="button" aria-expanded={showFilters} aria-controls="wo-filters" onClick={() => setShowFilters(value => !value)}>
             <Icon name="filter" size={17} />
             ตัวกรอง
           </button>
@@ -833,6 +898,17 @@ function WorkOrdersPage({
           )}
         </div>
       </div>
+      {showFilters && <div className="wo-search-filters" id="wo-filters">
+        <label>สร้างตั้งแต่วันที่ (ไทย)<input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
+        <label>ถึงวันที่ (ไทย)<input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
+        <label>ผู้รับผิดชอบ<select value={assigneeId} onChange={e => setAssigneeId(e.target.value)}><option value="">ทุกคน</option>{assignees.map(([id,name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+        <button className="cmms-secondary-button" type="button" onClick={() => { setFrom(""); setTo(""); setAssigneeId(""); setQuery(""); setStatus("ทั้งหมด"); }}>ล้างตัวกรอง</button>
+      </div>}
+      {from && to && from > to && <p role="alert">วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด</p>}
+      {(from || to) && unknownDates > 0 && <p role="status">ใบงานเดิม {unknownDates} รายการไม่มีเวลาสร้างที่ยืนยันได้ จึงไม่รวมในตัวกรองวันที่ ล้างวันที่เพื่อดูทั้งหมด</p>}
+      <p role="status">พบ {filtered.length} ใบงาน</p>
+      <OrderSummaryExport orders={orders} filters={filters} siteId={reportSite.id} siteName={reportSite.name} scopeKey={reportScope} mode={reportMode} />
+      <MaterialLedgerExport orders={orders} filters={filters} siteName={reportSite.name} scope={{ ...reportActor, siteId: reportSite.id }} mode={reportMode} verified={materialVerified} />
       <WorkOrderTable orders={filtered} onSelect={onSelect} />
     </section>
   );
@@ -904,22 +980,17 @@ function PMPage({ schedule }: { schedule: PmItem[] }) {
   );
 }
 
-function AssetsPage({ siteAssets }: { siteAssets: Asset[] }) {
+function AssetsPage({ siteAssets, workOrders, maintenance, loading, historyError, onSelectOrder, reportSite, reportScope, reportMode, registerVerified }: { siteAssets: Asset[]; workOrders: WorkOrder[]; maintenance: MaintenanceState; loading: boolean; historyError: boolean; onSelectOrder: (order: WorkOrder) => void; reportSite: Jobsite; reportScope: string; reportMode: "online" | "demo"; registerVerified: boolean }) {
   const [query, setQuery] = useState("");
   const [health, setHealth] = useState<"ทั้งหมด" | AssetHealth>("ทั้งหมด");
   const [selected, setSelected] = useState<Asset | null>(null);
 
-  const filtered = siteAssets.filter((asset) => {
-    const normalized = query.trim().toLowerCase();
-    const matchesQuery =
-      !normalized ||
-      `${asset.id} ${asset.name} ${asset.type} ${asset.site}`.toLowerCase().includes(normalized);
-    return matchesQuery && (health === "ทั้งหมด" || asset.health === health);
-  });
+  const filtered = filterRegisteredAssets(siteAssets, { query, health }, reportSite.name);
 
   return (
     <>
       <section className="cmms-panel cmms-page-panel cmms-assets-page">
+        <AssetRegisterExport assets={siteAssets} filters={{ query, health }} siteId={reportSite.id} siteName={reportSite.name} scopeKey={reportScope} mode={reportMode} verified={registerVerified} />
         <div className="cmms-list-toolbar">
           <div className="cmms-asset-stats">
             <span><i className="healthy" />ปกติ <strong>{siteAssets.filter((asset) => asset.health === "ปกติ").length}</strong></span>
@@ -931,7 +1002,7 @@ function AssetsPage({ siteAssets }: { siteAssets: Asset[] }) {
               <Icon name="search" size={17} />
               <input
                 aria-label="ค้นหาเครื่องจักร"
-                placeholder="ค้นหา Asset ID, ชื่อ หรือไซต์"
+                placeholder="ค้นหารหัส ชื่อ รุ่น Serial หรือตำแหน่ง"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
@@ -986,18 +1057,15 @@ function AssetsPage({ siteAssets }: { siteAssets: Asset[] }) {
               <div><dt>ประเภท</dt><dd>{selected.type}</dd></div>
               <div><dt>ไซต์</dt><dd>{selected.site}</dd></div>
               <div><dt>ตำแหน่ง</dt><dd>{selected.location}</dd></div>
+              <div><dt>อาคาร / ชั้น / ห้อง</dt><dd>{[selected.building, selected.floor, selected.room].filter(Boolean).join(" / ") || "ยังไม่ระบุ"}</dd></div>
+              <div><dt>ผู้ผลิต</dt><dd>{selected.manufacturer || "ยังไม่ระบุ"}</dd></div>
+              <div><dt>รุ่น</dt><dd>{selected.model || "ยังไม่ระบุ"}</dd></div>
+              <div><dt>Serial Number</dt><dd>{selected.serialNumber || "ยังไม่ระบุ"}</dd></div>
               <div><dt>ข้อมูลล่าสุด</dt><dd>{selected.sensor}</dd></div>
               <div><dt>PM ล่าสุด</dt><dd>{selected.lastPm}</dd></div>
               <div><dt>PM ครั้งถัดไป</dt><dd>{selected.nextPm}</dd></div>
             </dl>
-            <div className="cmms-drawer-section">
-              <h3>ประวัติล่าสุด</h3>
-              <div className="cmms-timeline">
-                <p><i /><span><strong>ตรวจสอบข้อมูลจาก Sensor</strong><small>วันนี้ 10:24 • ระบบ IoT</small></span></p>
-                <p><i /><span><strong>บันทึกผล PM แล้ว</strong><small>{selected.lastPm} • ทีมวิศวกร ThaiCon</small></span></p>
-                <p><i /><span><strong>อัปเดตทะเบียนเครื่องจักร</strong><small>12 มิ.ย. 2569 • System Admin</small></span></p>
-              </div>
-            </div>
+            <AssetHistory asset={selected} siteName={selected.site} orders={workOrders} maintenance={maintenance} loading={loading} error={historyError || !registerVerified} onSelectOrder={onSelectOrder} scopeKey={reportScope} mode={reportMode} />
           </aside>
         </div>
       )}
@@ -1017,9 +1085,9 @@ function SitesPage({ sites }: { sites: Jobsite[] }) {
           <h3>{site.name}</h3>
           <p>{site.type} • สัญญาบริการ Active</p>
           <div className="cmms-site-metrics">
-            <span><small>เครื่องจักร</small><strong>{site.assetCount}</strong></span>
-            <span><small>ใบงานเปิด</small><strong>{site.openWorkOrders}</strong></span>
-            <span><small>PM Compliance</small><strong>{site.pmCompliance}%</strong></span>
+            <span><small>เครื่องจักร</small><strong>{site.assetCount ?? "—"}</strong></span>
+            <span><small>ใบงานเปิด</small><strong>{site.openWorkOrders ?? "—"}</strong></span>
+            <span><small>PM (ค่าที่กำหนด)</small><strong>{site.pmCompliance == null ? "—" : `${site.pmCompliance}%`}</strong></span>
           </div>
           <div className="cmms-site-footer">
             <span>{site.province}</span>
@@ -1036,11 +1104,13 @@ function AlertsPage({
   canOperate,
   onAcknowledge,
   onCreateOrder,
+  locked = false,
 }: {
   alerts: AlertItem[];
   canOperate: boolean;
   onAcknowledge: (id: string) => void;
   onCreateOrder: (alert: AlertItem) => void;
+  locked?:boolean;
 }) {
   return (
     <section className="cmms-panel cmms-page-panel">
@@ -1066,10 +1136,10 @@ function AlertsPage({
             <div className="cmms-event-actions">
               {canOperate && !alert.acknowledged ? (
                 <>
-                  <button className="cmms-secondary-button" type="button" onClick={() => onAcknowledge(alert.id)}>
+                  <button className="cmms-secondary-button" type="button" disabled={locked} onClick={() => onAcknowledge(alert.id)}>
                     รับทราบ
                   </button>
-                  <button className="cmms-primary-button compact" type="button" onClick={() => onCreateOrder(alert)}>
+                  <button className="cmms-primary-button compact" type="button" disabled={locked} onClick={() => onCreateOrder(alert)}>
                     สร้างใบงาน
                   </button>
                 </>
@@ -1150,45 +1220,66 @@ function CreateWorkOrderModal({
 }: {
   siteAssets: Asset[];
   onClose: () => void;
-  onSubmit: (order: WorkOrder) => void;
+  onSubmit: (order: WorkOrder) => Promise<void>;
   presetAlert: AlertItem | null;
 }) {
   const [assetId, setAssetId] = useState(presetAlert?.assetId ?? siteAssets[0].id);
   const selectedAsset = siteAssets.find((asset) => asset.id === assetId) ?? siteAssets[0];
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const pendingOrder = useRef<WorkOrder | null>(null);
+  const dialogRef = useDialogFocus<HTMLDivElement>(() => { if (!busy) onClose(); });
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const nextNumber = 149 + Math.floor(Math.random() * 40);
-    onSubmit({
-      id: `WO-2607-${String(nextNumber).padStart(4, "0")}`,
+    const now = new Date();
+    let dueAt: string | null = null;
+    if (!pendingOrder.current) {
+      try { dueAt = bangkokInputToInstant(String(form.get("dueAt") ?? "")); }
+      catch (error) { setError(error instanceof Error ? error.message : "วันกำหนดเสร็จไม่ถูกต้อง"); return; }
+    }
+    const order: WorkOrder = pendingOrder.current ?? {
+      id: `WO-${crypto.randomUUID()}`,
       type: form.get("type") as WorkOrder["type"],
       title: String(form.get("title")),
       assetId,
       assetName: selectedAsset.name,
       site: selectedAsset.site,
+      jobsiteId: selectedAsset.jobsiteId,
       priority: form.get("priority") as Priority,
       status: "รอมอบหมาย",
       assignee: "ยังไม่มอบหมาย",
       due: String(form.get("due")),
-      created: "28 ก.ค. 10:35",
+      dueAt,
+      created: new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(now),
+      createdAt: now.toISOString(),
       progress: 0,
-    });
+      description: String(form.get("detail") ?? ""),
+    };
+    pendingOrder.current = order; setBusy(true); setError("");
+    try { await onSubmit(order); pendingOrder.current = null; }
+    catch (e) {
+      if (e instanceof OrderCommandError && e.kind !== "failed") pendingOrder.current = null;
+      setError(e instanceof Error ? e.message : "สร้างใบงานไม่สำเร็จ");
+    } finally { setBusy(false); }
   };
 
   return (
-    <div className="cmms-modal-backdrop" onMouseDown={onClose}>
-      <div className="cmms-modal" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="cmms-modal-backdrop" onMouseDown={() => { if (!busy) onClose(); }}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="create-work-order-title" tabIndex={-1} className="cmms-modal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="cmms-modal-heading">
-          <div><span>NEW WORK ORDER</span><h2>สร้างใบงานใหม่</h2><p>ระบุงาน เครื่องจักร และระดับการตอบสนอง</p></div>
-          <button type="button" onClick={onClose} aria-label="ปิด"><Icon name="close" size={20} /></button>
+          <div><span>NEW WORK ORDER</span><h2 id="create-work-order-title">สร้างใบงานใหม่</h2><p>ระบุงาน เครื่องจักร และระดับการตอบสนอง</p></div>
+          <button type="button" disabled={busy} onClick={onClose} aria-label="ปิด"><Icon name="close" size={20} /></button>
         </div>
         <form onSubmit={handleSubmit}>
+          <fieldset disabled={busy || !!pendingOrder.current} style={{ border: 0, padding: 0, margin: 0 }}>
           <label>
             ชื่องาน
             <input
               name="title"
               required
+              maxLength={300}
               defaultValue={presetAlert ? `ตรวจสอบ: ${presetAlert.title}` : ""}
               placeholder="เช่น PM ระบบ AHU ประจำเดือน"
             />
@@ -1228,25 +1319,21 @@ function CreateWorkOrderModal({
           <div className="cmms-form-row">
             <label>
               กำหนดเสร็จ
-              <input name="due" defaultValue="29 ก.ค. 16:00" required />
+              <input aria-label="กำหนดเสร็จ" name="due" maxLength={200} placeholder="ระบุวันและเวลาที่ต้องการให้เสร็จ" required />
+              <span>ข้อความกำหนดเสร็จสำหรับแสดงในใบงาน</span>
             </label>
-            <label>
-              มอบหมายทีม
-              <select name="team" defaultValue="">
-                <option value="">ยังไม่มอบหมาย</option>
-                <option>ทีมวิศวกร 1</option>
-                <option>ทีมวิศวกร 2</option>
-                <option>ทีมวิศวกร 3</option>
-              </select>
-            </label>
+            <p>เลือกผู้รับผิดชอบได้ในรายละเอียดหลังสร้างใบงาน</p>
           </div>
+          <label>วันและเวลากำหนดเสร็จ (เวลาไทย)<input aria-label="วันและเวลากำหนดเสร็จ (เวลาไทย)" name="dueAt" type="datetime-local" /><span>ใช้คำนวณครบกำหนดและเกินกำหนด หากไม่ระบุ ระบบจะแสดงว่าไม่ทราบวันกำหนด ไม่ตีความจากข้อความข้างต้น</span></label>
           <label>
             รายละเอียด
-            <textarea name="detail" rows={4} defaultValue={presetAlert?.detail ?? ""} placeholder="ระบุอาการ ขอบเขตงาน หรือข้อควรระวัง" />
+            <textarea name="detail" rows={4} maxLength={4000} defaultValue={presetAlert?.detail ?? ""} placeholder="ระบุอาการ ขอบเขตงาน หรือข้อควรระวัง" />
           </label>
+          </fieldset>
+          {error && <p role="alert">{error}</p>}
           <div className="cmms-modal-actions">
-            <button className="cmms-secondary-button" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="cmms-primary-button" type="submit"><Icon name="plus" size={17} />สร้างใบงาน</button>
+            <button className="cmms-secondary-button" type="button" disabled={busy} onClick={onClose}>ยกเลิก</button>
+            <button className="cmms-primary-button" type="submit" disabled={busy}><Icon name="plus" size={17} />{busy ? "กำลังบันทึก…" : pendingOrder.current ? "ลองคำสั่งเดิมอีกครั้ง" : "สร้างใบงาน"}</button>
           </div>
         </form>
       </div>
@@ -1260,14 +1347,26 @@ function WorkOrderDrawer({
   canOperate,
   onClose,
   onUpdateStatus,
+  user, assignees, commands, onExecute, onRefresh, onMaterial,
+  unavailable = false,
 }: {
   order: WorkOrder;
   siteAssets: Asset[];
   canOperate: boolean;
   onClose: () => void;
   onUpdateStatus: (id: string, status: WorkStatus) => void;
+  user: DemoUser;
+  assignees: Array<{ id: string; displayName: string }>;
+  commands: boolean;
+  onExecute: (request: OrderCommandRequest) => Promise<void>;
+  onRefresh: () => Promise<void>;
+  onMaterial: (request: MaterialRequest) => Promise<void>;
+  unavailable?:boolean;
 }) {
   const asset = siteAssets.find((item) => item.id === order.assetId);
+  const dialogRef = useDialogFocus<HTMLElement>(onClose);
+  const [exportNotice, setExportNotice] = useState("");
+  const stage = orderStage(({ รอมอบหมาย: "waiting", กำลังดำเนินการ: "in_progress", รอตรวจรับ: "review", เสร็จสิ้น: "completed" } as const)[order.status]);
   const nextAction =
     order.status === "รอมอบหมาย"
       ? { label: "เริ่มดำเนินการ", status: "กำลังดำเนินการ" as WorkStatus }
@@ -1279,7 +1378,7 @@ function WorkOrderDrawer({
 
   return (
     <div className="cmms-drawer-backdrop" onMouseDown={onClose}>
-      <aside className="cmms-drawer order" onMouseDown={(event) => event.stopPropagation()}>
+      <aside ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="work-order-title" tabIndex={-1} className="cmms-drawer order" onMouseDown={(event) => event.stopPropagation()}>
         <button className="cmms-close-button" type="button" onClick={onClose} aria-label="ปิด">
           <Icon name="close" size={20} />
         </button>
@@ -1288,14 +1387,15 @@ function WorkOrderDrawer({
           <WorkTypeBadge type={order.type} />
           <strong>{order.id}</strong>
         </div>
-        <h2>{order.title}</h2>
+        <h2 id="work-order-title">{order.title}</h2>
         <div className="cmms-order-drawer-badges">
           <StatusBadge status={order.status} />
           <PriorityBadge priority={order.priority} />
         </div>
         <div className="cmms-progress-block">
-          <div><span>ความคืบหน้า</span><strong>{order.progress}%</strong></div>
-          <i><span style={{ width: `${order.progress}%` }} /></i>
+          <div><span>{commands ? "ขั้นตอนใบงาน" : "ความคืบหน้า"}</span><strong>{commands ? stage.label : `${order.progress}%`}</strong></div>
+          <i><span style={{ width: `${commands ? stage.value : order.progress}%` }} /></i>
+          {commands && <p>แถบนี้แสดงขั้นตอนงาน ไม่ใช่เปอร์เซ็นต์งานที่ทำจริง</p>}
         </div>
         <dl className="cmms-detail-list">
           <div><dt>เครื่องจักร</dt><dd>{order.assetId}<small>{order.assetName}</small></dd></div>
@@ -1303,19 +1403,23 @@ function WorkOrderDrawer({
           <div><dt>ผู้รับผิดชอบ</dt><dd>{order.assignee}</dd></div>
           <div><dt>กำหนดเสร็จ</dt><dd>{order.due}</dd></div>
           <div><dt>สร้างเมื่อ</dt><dd>{order.created}</dd></div>
-          {asset && <div><dt>ข้อมูล Sensor</dt><dd>{asset.sensor}</dd></div>}
+          {order.description && <div><dt>รายละเอียด</dt><dd>{order.description}</dd></div>}
+          {asset && <div><dt>Sensor (ข้อมูลจำลอง)</dt><dd>{asset.sensor}</dd></div>}
         </dl>
         <div className="cmms-drawer-section">
+          {unavailable ? <p role="alert">ยังตรวจข้อมูลใบงานใหม่ไม่ได้ คงข้อมูลและร่างเดิมไว้ หยุดแก้ไขและส่งออกจนโหลดสำเร็จ</p> : <><ExcelDownloadButton filename={`${order.id}.xlsx`} sheets={() => workOrderSheets(order, commands)} onToast={setExportNotice} /><WorkOrderPdfButton order={order} advanced={commands} /></>}
+          {exportNotice && <p role="status">{exportNotice}</p>}
+          {user.role === "user" && <p>ดูข้อมูลได้อย่างเดียว ไม่สามารถแก้ไขหรืออนุมัติใบงาน</p>}
           <h3>กิจกรรม</h3>
           <div className="cmms-timeline">
-            <p><i /><span><strong>สร้างใบงาน</strong><small>{order.created} • System</small></span></p>
-            {order.status !== "รอมอบหมาย" && <p><i /><span><strong>มอบหมายให้ {order.assignee}</strong><small>28 ก.ค. 09:18 • Service Manager</small></span></p>}
-            {order.progress > 0 && <p><i /><span><strong>อัปเดตผลการดำเนินงาน {order.progress}%</strong><small>วันนี้ 10:12 • {order.assignee}</small></span></p>}
+            {(order.events ?? []).map(event => <p key={event.id}><i /><span><strong>{({ create: "สร้างใบงาน", assign: "มอบหมายงาน", start: "เริ่มงาน", submit: "ส่งตรวจรับ", approve: "ตรวจรับงาน", return: "ส่งกลับแก้ไข", material: "บันทึกวัสดุ", void_material: "ยกเลิกรายการวัสดุ", note: "เพิ่มบันทึก" } as Record<string, string>)[event.command] ?? event.command}</strong><small>{new Date(event.at).toLocaleString("th-TH")} • {event.actorName}</small>{event.note && <span>{event.note}</span>}</span></p>)}
+            {order.historyStatus === "loading" ? <p role="status">กำลังโหลดประวัติ…</p> : order.historyStatus === "error" ? <p role="alert">โหลดประวัติไม่สำเร็จ กดโหลดข้อมูลล่าสุดเพื่อลองใหม่</p> : !order.events?.length && <p>ยังไม่มีบันทึกกิจกรรมสำหรับใบงานนี้</p>}
           </div>
         </div>
-        {canOperate && (
+        <fieldset disabled={unavailable} style={{border:0,padding:0,margin:0}}>
+        {commands && <WorkOrderMaterials key={`materials:${order.id}`} order={order} user={user} onRecord={onMaterial} onRefresh={onRefresh} />}
+        {commands ? <WorkOrderActions key={order.id} order={order} user={user} assignees={assignees} onExecute={onExecute} onRefresh={onRefresh} /> : canOperate && user.role === "admin" && (
           <div className="cmms-drawer-actions">
-            <button className="cmms-secondary-button" type="button">เพิ่มบันทึก</button>
             {nextAction && (
               <button className="cmms-primary-button" type="button" onClick={() => onUpdateStatus(order.id, nextAction.status)}>
                 <Icon name="check" size={17} />{nextAction.label}
@@ -1323,6 +1427,7 @@ function WorkOrderDrawer({
             )}
           </div>
         )}
+        </fieldset>
       </aside>
     </div>
   );
@@ -1401,17 +1506,48 @@ export default function CMMSApp({
 }) {
   const [activePage, setActivePage] = useState<Page>(() => currentUser.role === "engineer" ? "service-reports" : "dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [workOrders, setWorkOrders] = useState(initialWorkOrders);
-  const [alerts, setAlerts] = useState(initialAlerts);
-  const [maintenanceState, setMaintenanceState] = useState<MaintenanceState>(() => loadMaintenanceState());
+  const [initialOperations] = useState(() => onlineMode ? { workOrders: [], alerts: [] } : loadDemoOperations({ workOrders: initialWorkOrders, alerts: initialAlerts }));
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialOperations.workOrders);
+  const [alerts, setAlerts] = useState<AlertItem[]>(initialOperations.alerts);
+  const [maintenanceState, setMaintenanceState] = useState<MaintenanceState>(() => onlineMode ? { plans: [], serviceReports: [], repairRequests: [] } : loadMaintenanceState());
   const [maintenanceRemoteLoading, setMaintenanceRemoteLoading] = useState(onlineMode);
   const remoteMaintenanceBaseline = useRef<MaintenanceState | null>(null);
   const maintenanceSyncTimer = useRef<number | null>(null);
   const maintenanceSyncQueue = useRef(Promise.resolve());
+  const [reportCommandsReady, setReportCommandsReady] = useState<boolean | null>(onlineMode ? null : false);
+  const [maintenanceLoadAttempt, setMaintenanceLoadAttempt] = useState(0);
+  const reportRepository = useMemo(() => createReportCommandRepository(), []);
+  const repairRepository = useMemo(() => createRepairCommandRepository(), []);
+  const planRepository = useMemo(() => createPlanCommandRepository(), []);
+  const planConfirmations = useRef(new Map<string,PlanCommandState>());
+  const [planCommandsReady, setPlanCommandsReady] = useState<boolean | null>(onlineMode ? null : false);
+  const [repairCommandsReady, setRepairCommandsReady] = useState<boolean | null>(onlineMode ? null : false);
+  const reportPending = useRef(false);
+  const reportScope = `${onlineMode}:${currentUser.id}:${currentUser.role}:${activeJobsite.id}`;
+  const reportScopeRef = useRef(reportScope);
+  reportScopeRef.current = reportScope;
+  useEffect(() => { reportScopeRef.current = reportScope; return () => { reportScopeRef.current = "closed"; }; }, [reportScope]);
+  useEffect(() => {
+    const preventExit = (event: BeforeUnloadEvent) => { if (reportPending.current) { event.preventDefault(); event.returnValue = ""; } };
+    window.addEventListener("beforeunload", preventExit);
+    return () => window.removeEventListener("beforeunload", preventExit);
+  }, []);
   const [operationsRemoteLoading, setOperationsRemoteLoading] = useState(onlineMode);
+  const [operationsReadError,setOperationsReadError] = useState(false);
   const remoteOperationsBaseline = useRef<OperationsState | null>(null);
   const operationsSyncTimer = useRef<number | null>(null);
   const operationsSyncQueue = useRef(Promise.resolve());
+  const [commandsReady, setCommandsReady] = useState<boolean | null>(onlineMode ? null : true);
+  const [orderAssignees, setOrderAssignees] = useState<Array<{ id: string; displayName: string }>>([]);
+  const orderRepository = useMemo(() => createOrderCommandRepository(), []);
+  const alarmRepository = useMemo(() => createAlarmCommandRepository(), []);
+  const [alarmReady,setAlarmReady] = useState<boolean|null>(onlineMode ? null:false);
+  const [alarmLoadAttempt,setAlarmLoadAttempt] = useState(0);
+  const alarmOperation = useRef<ReturnType<typeof createAlarmAcknowledgeOperation>|null>(null);
+  const alarmBusyRef = useRef(false);
+  const [alarmBusy,setAlarmBusy] = useState(false),[alarmError,setAlarmError] = useState(""),[alarmLocked,setAlarmLocked] = useState(false);
+  const [orderUpdateConnection, setOrderUpdateConnection] = useState<OrderUpdateConnection>("connecting");
+  const latestOrderRefresh = useRef<() => Promise<void>>(async () => {});
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [presetAlert, setPresetAlert] = useState<AlertItem | null>(null);
@@ -1420,6 +1556,31 @@ export default function CMMSApp({
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const liveScope={siteId:activeJobsite.id,userId:currentUser.id,role:currentUser.role};
+  // Never replace dirty legacy datasets: automatic maintenance refresh is
+  // enabled only when every owning command gate is confirmed ON.
+  const maintenanceLive=useSiteLiveUpdates(supabase,
+    onlineMode && reportCommandsReady===true && repairCommandsReady===true && planCommandsReady===true && !maintenanceRemoteLoading,
+    "maintenance",liveScope, snapshot=>prepareLiveMaintenance(supabase!,snapshot), result=>{
+      const baseline=remoteMaintenanceBaseline.current;
+      if(!baseline)throw new Error("Maintenance baseline unavailable");
+      const merged=mergeLiveMaintenance(baseline,result.state,result.tombstones,planConfirmations.current,activeJobsite.id);
+      planConfirmations.current=merged.confirmations;
+      remoteMaintenanceBaseline.current=merged.state;
+      setMaintenanceState(current=>mergeLiveMaintenance(current,result.state,result.tombstones,merged.confirmations,activeJobsite.id).state);
+    });
+  const alarmLive=useSiteLiveUpdates(supabase,
+    onlineMode && alarmReady===true && commandsReady!==null && !operationsRemoteLoading,
+    "alarms",liveScope, async snapshot=>snapshot.alarms!.map(row=>mapSupabaseAlarm(row as unknown as AlarmRow,
+      new Map(masterData.jobsites.map(site=>[site.id,site.name])))), received=>{
+      if(!remoteOperationsBaseline.current)throw new Error("Operations baseline unavailable");
+      remoteOperationsBaseline.current={...remoteOperationsBaseline.current,
+        alerts:mergeLiveAlarms(remoteOperationsBaseline.current.alerts,received,activeJobsite.id)};
+      setAlerts(current=>mergeLiveAlarms(current,received,activeJobsite.id));
+    });
+  const liveAccessDenied=maintenanceLive.denied || alarmLive.denied;
+  const livePermissions=useRef({maintenanceBlocked:false,alarmBlocked:false,denied:false});
+  livePermissions.current={maintenanceBlocked:maintenanceLive.blocked,alarmBlocked:alarmLive.blocked,denied:!!liveAccessDenied};
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -1440,15 +1601,52 @@ export default function CMMSApp({
     if (!onlineMode) saveMaintenanceState(maintenanceState);
   }, [maintenanceState, onlineMode]);
 
+  useEffect(() => {
+    if (!onlineMode && !saveDemoOperations({ workOrders, alerts })) {
+      setToast("บันทึก Demo ไม่ได้ ข้อมูลเดิมอาจไม่สมบูรณ์หรือพื้นที่ไม่พอ หยุดแก้ไขและสำรองข้อมูลเดิมก่อน");
+    }
+  }, [workOrders, alerts, onlineMode]);
+
   const allowedJobsiteKey = allowedJobsites.map((site) => site.id).sort().join(",");
+  const orderReadGeneration = useRef(0);
+  const orderScope = `${onlineMode}:${currentUser.id}:${activeJobsite.id}:${allowedJobsiteKey}`;
+  useEffect(() => {
+    orderReadGeneration.current++;
+    setSelectedOrder(null);
+    return () => { orderReadGeneration.current++; };
+  }, [orderScope]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!onlineMode) {
+      setCommandsReady(true);
+      setOrderAssignees(masterData.users.filter(u => u.active && (u.role === "admin" || (u.role === "engineer" && u.jobsiteIds.includes(activeJobsite.id)))).map(u => ({ id: u.id, displayName: u.displayName })));
+      return;
+    }
+    setCommandsReady(null); setOrderAssignees([]);setOperationsRemoteLoading(true);setOperationsReadError(false);
+    orderRepository.ready().then(async ready => {
+      const users = ready && currentUser.role === "admin" ? await orderRepository.assignees(activeJobsite.id) : [];
+      if (!cancelled) { setOrderAssignees(users); setCommandsReady(ready); }
+    }).catch(() => { if (!cancelled) { setOperationsRemoteLoading(false);setOperationsReadError(true);setToast("ตรวจการบันทึกใบงานไม่สำเร็จ กดโหลดใบงานและ Alarm อีกครั้ง"); } });
+    return () => { cancelled = true; };
+  }, [onlineMode, currentUser.id, currentUser.role, activeJobsite.id, masterData.users, orderRepository,alarmLoadAttempt]);
 
   useEffect(() => {
     if (!onlineMode) return;
     let cancelled = false;
     setMaintenanceRemoteLoading(true);
-    loadSupabaseMaintenanceState(allowedJobsiteKey.split(",").filter(Boolean))
-      .then((remoteState) => {
+    setReportCommandsReady(null);
+    setRepairCommandsReady(null);
+    setPlanCommandsReady(null);
+    planConfirmations.current.clear();
+    remoteMaintenanceBaseline.current = null;
+    setMaintenanceState({ plans: [], serviceReports: [], repairRequests: [] });
+    Promise.all([loadSupabaseMaintenanceState(allowedJobsiteKey.split(",").filter(Boolean)), reportRepository.ready(), repairRepository.ready(), planRepository.ready()])
+      .then(([remoteState, ready, repairReady, planReady]) => {
         if (cancelled) return;
+        setReportCommandsReady(ready);
+        setRepairCommandsReady(repairReady);
+        setPlanCommandsReady(planReady);
         remoteMaintenanceBaseline.current = structuredClone(remoteState);
         setMaintenanceState(remoteState);
         setMaintenanceRemoteLoading(false);
@@ -1463,10 +1661,10 @@ export default function CMMSApp({
     return () => {
       cancelled = true;
     };
-  }, [allowedJobsiteKey, currentUser.id, onlineMode]);
+  }, [allowedJobsiteKey, currentUser.id, onlineMode, maintenanceLoadAttempt, reportRepository, repairRepository, planRepository]);
 
   useEffect(() => {
-    if (!onlineMode || maintenanceRemoteLoading || !remoteMaintenanceBaseline.current) return;
+    if (!onlineMode || reportCommandsReady === null || repairCommandsReady === null || planCommandsReady === null || maintenanceRemoteLoading || !remoteMaintenanceBaseline.current) return;
     if (maintenanceSyncTimer.current) window.clearTimeout(maintenanceSyncTimer.current);
     const snapshot = structuredClone(maintenanceState);
     maintenanceSyncTimer.current = window.setTimeout(() => {
@@ -1474,8 +1672,8 @@ export default function CMMSApp({
         .then(async () => {
           const previous = remoteMaintenanceBaseline.current;
           if (!previous) return;
-          await syncSupabaseMaintenanceState(previous, snapshot, currentUser.id);
-          remoteMaintenanceBaseline.current = structuredClone(snapshot);
+          await syncSupabaseMaintenanceState(legacyMaintenanceSlice(previous, reportCommandsReady === true, repairCommandsReady === true, planCommandsReady === true), legacyMaintenanceSlice(snapshot, reportCommandsReady === true, repairCommandsReady === true, planCommandsReady === true), currentUser.id);
+          if (remoteMaintenanceBaseline.current) remoteMaintenanceBaseline.current = structuredClone(mergeLegacyMaintenanceBaseline(remoteMaintenanceBaseline.current, snapshot, reportCommandsReady === true, repairCommandsReady === true, planCommandsReady === true));
         })
         .catch((error) => {
           console.error("Unable to sync maintenance workflow", error);
@@ -1485,32 +1683,46 @@ export default function CMMSApp({
     return () => {
       if (maintenanceSyncTimer.current) window.clearTimeout(maintenanceSyncTimer.current);
     };
-  }, [currentUser.id, maintenanceRemoteLoading, maintenanceState, onlineMode]);
+  }, [currentUser.id, maintenanceRemoteLoading, maintenanceState, onlineMode, reportCommandsReady, repairCommandsReady, planCommandsReady]);
 
   useEffect(() => {
-    if (!onlineMode) return;
+    if (!onlineMode || commandsReady === null) return;
     let cancelled = false;
     setOperationsRemoteLoading(true);
-    loadSupabaseOperationsState(allowedJobsiteKey.split(",").filter(Boolean), masterData.jobsites, masterData.assets)
-      .then((remoteState) => {
+    setOperationsReadError(false);
+    setAlarmReady(null);
+    alarmRepository.ready().then(async ready => ({ready,remoteState:await loadSupabaseOperationsState(allowedJobsiteKey.split(",").filter(Boolean), masterData.jobsites, masterData.assets, commandsReady,ready)}))
+      .then(({remoteState,ready}) => {
         if (cancelled) return;
+        setAlarmReady(ready);
         remoteOperationsBaseline.current = structuredClone(remoteState);
         setWorkOrders(remoteState.workOrders);
         setAlerts(remoteState.alerts);
         setOperationsRemoteLoading(false);
+        setOperationsReadError(false);
       })
       .catch((error) => {
         if (cancelled) return;
         console.error("Unable to load operations workflow", error);
-        remoteOperationsBaseline.current = null;
+        setOperationsReadError(true); // Retain last confirmed snapshot; do not invent zero totals.
         setOperationsRemoteLoading(false);
         setToast("โหลด Work Order และ Alarm จาก Supabase ไม่สำเร็จ");
       });
     return () => { cancelled = true; };
-  }, [allowedJobsiteKey, currentUser.id, masterData.assets, masterData.jobsites, onlineMode]);
+  }, [allowedJobsiteKey, currentUser.id, masterData.assets, masterData.jobsites, onlineMode, commandsReady,alarmRepository,alarmLoadAttempt]);
+
+  useEffect(() => { latestOrderRefresh.current = refreshOrders; });
+  useEffect(() => {
+    if (!onlineMode || !commandsReady || operationsRemoteLoading || !supabase) return;
+    return watchWorkOrderUpdates(supabase, activeJobsite.id, currentUser.id, {
+      refresh: () => latestOrderRefresh.current(),
+      connection: setOrderUpdateConnection,
+      failure: () => setOrderUpdateConnection("degraded"),
+    });
+  }, [onlineMode, commandsReady, operationsRemoteLoading, activeJobsite.id, currentUser.id]);
 
   useEffect(() => {
-    if (!onlineMode || operationsRemoteLoading || !remoteOperationsBaseline.current) return;
+    if (!onlineMode || commandsReady === null || alarmReady === null || operationsRemoteLoading || !remoteOperationsBaseline.current) return;
     if (operationsSyncTimer.current) window.clearTimeout(operationsSyncTimer.current);
     const snapshot: OperationsState = structuredClone({ workOrders, alerts });
     operationsSyncTimer.current = window.setTimeout(() => {
@@ -1518,8 +1730,11 @@ export default function CMMSApp({
         .then(async () => {
           const previous = remoteOperationsBaseline.current;
           if (!previous) return;
-          await syncSupabaseOperationsState(previous, snapshot, currentUser.id, masterData.jobsites);
-          remoteOperationsBaseline.current = structuredClone(snapshot);
+          // Online acknowledgement is always narrow/confirmed (RPC when ON,
+          // boolean-only qualified PATCH on old deployments). Never autosync
+          // cached Alarm title/detail/value back, even when its gate is OFF.
+          await syncSupabaseOperationsState(previous, snapshot, currentUser.id, masterData.jobsites, commandsReady,true);
+          if(remoteOperationsBaseline.current) remoteOperationsBaseline.current = structuredClone({...snapshot,alerts:remoteOperationsBaseline.current.alerts});
         })
         .catch((error) => {
           console.error("Unable to sync operations workflow", error);
@@ -1529,7 +1744,7 @@ export default function CMMSApp({
     return () => {
       if (operationsSyncTimer.current) window.clearTimeout(operationsSyncTimer.current);
     };
-  }, [alerts, currentUser.id, masterData.jobsites, onlineMode, operationsRemoteLoading, workOrders]);
+  }, [alerts, currentUser.id, masterData.jobsites, onlineMode, operationsRemoteLoading, workOrders, commandsReady,alarmReady]);
 
   useEffect(() => {
     if (!profileMenuOpen) return;
@@ -1552,12 +1767,14 @@ export default function CMMSApp({
   }, [profileMenuOpen]);
 
   const logout = () => {
+    if (reportPending.current) { setToast("ยังรอยืนยันการบันทึกรายงาน กรุณาตรวจผลก่อนออกจากระบบ"); return; }
     setProfileMenuOpen(false);
     setProfileModalOpen(false);
     onLogout();
   };
 
   const navigate = (page: Page) => {
+    if (reportPending.current) { setToast("ยังรอยืนยันการบันทึกรายงาน กรุณาตรวจผลก่อนเปลี่ยนหน้า"); return; }
     if (!pagesByRole[currentUser.role].includes(page)) {
       setToast("บัญชีนี้ไม่มีสิทธิ์เปิดเมนูดังกล่าว");
       return;
@@ -1569,25 +1786,152 @@ export default function CMMSApp({
   };
 
   const returnToJobsiteSelection = () => {
+    if (reportPending.current) { setToast("ยังรอยืนยันการบันทึกรายงาน กรุณาตรวจผลก่อนเปลี่ยนไซต์"); return; }
     setSidebarOpen(false);
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     onChangeJobsite();
   };
 
-  const createOrder = (order: WorkOrder) => {
-    setWorkOrders((current) => [order, ...current]);
+  const assertReportScope = () => {
+    if (reportScopeRef.current !== reportScope || livePermissions.current.denied || livePermissions.current.maintenanceBlocked)
+      throw new Error("ยังตรวจข้อมูลหรือสิทธิ์รายงานล่าสุดไม่ได้ กรุณาลองโหลดอีกครั้ง");
+  };
+  const assertAlarmScope = () => {
+    if(reportScopeRef.current!==reportScope || livePermissions.current.denied || livePermissions.current.alarmBlocked)
+      throw new Error("ยังตรวจข้อมูลหรือสิทธิ์ Alarm ล่าสุดไม่ได้ กรุณาลองโหลดอีกครั้ง");
+  };
+  async function refreshReport(id: string, minVersion = 1) {
+    assertReportScope();
+    const remote = await loadSupabaseMaintenanceState([activeJobsite.id]);
+    assertReportScope();
+    const baseline = remoteMaintenanceBaseline.current;
+    if (!baseline) throw new Error("ยังไม่พร้อมยืนยันข้อมูลรายงาน");
+    const confirmed = mergeConfirmedReport(baseline, remote, id, activeJobsite.id, minVersion);
+    remoteMaintenanceBaseline.current = confirmed.state;
+    setMaintenanceState(current => mergeConfirmedReport(current, remote, id, activeJobsite.id, minVersion).state);
+    return confirmed.report;
+  }
+  async function refreshRepair(id: string, minVersion = 1) {
+    assertReportScope();
+    const remote = await loadSupabaseMaintenanceState([activeJobsite.id]);
+    assertReportScope();
+    const baseline = remoteMaintenanceBaseline.current;
+    if (!baseline) throw new Error("ยังไม่พร้อมยืนยันใบแจ้งซ่อม");
+    const confirmed = mergeConfirmedRepair(baseline, remote, id, activeJobsite.id, minVersion);
+    remoteMaintenanceBaseline.current = confirmed.state;
+    setMaintenanceState(current => mergeConfirmedRepair(current, remote, id, activeJobsite.id, minVersion).state);
+    return confirmed.repair;
+  }
+  async function refreshPlan(id: string, minVersion = 1) {
+    assertReportScope();
+    const received = await planRepository.read(id,activeJobsite.id,minVersion);
+    assertReportScope();
+    const baseline = remoteMaintenanceBaseline.current;
+    if (!baseline) throw new Error("ยังไม่พร้อมยืนยันแผน");
+    const merged = mergeConfirmedPlan(baseline,received,planConfirmations.current.get(id),activeJobsite.id,minVersion);
+    planConfirmations.current.set(id,merged.confirmed);
+    remoteMaintenanceBaseline.current = merged.state;
+    setMaintenanceState(current => mergeConfirmedPlan(current,merged.confirmed,planConfirmations.current.get(id),activeJobsite.id,minVersion).state);
+    return merged.confirmed;
+  }
+
+  const createOrder = async (order: WorkOrder) => {
+    if (onlineMode && commandsReady === null) throw new OrderCommandError("failed", "กำลังตรวจการบันทึกใบงาน กรุณาลองใหม่");
+    if (onlineMode && commandsReady) {
+      await orderRepository.create({ orderId: order.id, requestId: order.id.slice(3), siteId: activeJobsite.id, assetId: order.assetId,
+        title: order.title, workType: order.type, priority: ({ วิกฤต: "critical", สูง: "high", ปกติ: "normal", ต่ำ: "low" } as const)[order.priority],
+        dueLabel: order.due, description: order.description ?? "", dueAt: order.dueAt });
+      await refreshOrders();
+    } else if (!onlineMode) {
+      const created = { ...order, version: 1, assigneeId: null, events: [{ id: crypto.randomUUID(), command: "create", actorName: currentUser.displayName, at: new Date().toISOString(), note: null, version: 1 }] };
+      const next = { workOrders: [created, ...workOrders], alerts };
+      if (!saveDemoOperations(next)) throw new OrderCommandError("failed", "บันทึกในเบราว์เซอร์ไม่ได้ กรุณาตรวจพื้นที่จัดเก็บ");
+      setWorkOrders(next.workOrders);
+    } else setWorkOrders((current) => [order, ...current]);
     setCreateOpen(false);
     setPresetAlert(null);
     setToast(`สร้างใบงาน ${order.id} แล้ว`);
     setActivePage("work-orders");
   };
 
+  async function refreshOrders() {
+    const generation = ++orderReadGeneration.current;
+    if (!onlineMode) {
+      const latest = loadDemoOperations({ workOrders, alerts });
+      setWorkOrders(latest.workOrders); setAlerts(latest.alerts);
+      if (selectedOrder) setSelectedOrder(current => current?.id === selectedOrder.id ? operationsForSite(latest.workOrders,activeJobsite.id,masterData.jobsites).find(o => o.id === current.id) ?? null : current);
+      return;
+    }
+    const remote = await loadSupabaseOperationsState(allowedJobsiteKey.split(",").filter(Boolean), masterData.jobsites, masterData.assets, commandsReady === true,alarmReady === true);
+    if (generation !== orderReadGeneration.current) return;
+    // Refresh only orders; preserve unsaved alarm acknowledgement state.
+    setWorkOrders(remote.workOrders);
+    if (selectedOrder) {
+      const current = operationsForSite(remote.workOrders,activeJobsite.id,masterData.jobsites).find(o => o.id === selectedOrder.id);
+      if (current && commandsReady) {
+        const [events, materials] = await Promise.all([orderRepository.history(current.id), orderRepository.materials(current.id)]);
+        current.events = events.map(e => ({ id: String(e.event_no), command: e.command, actorName: e.actor_name, at: e.recorded_at, note: e.note, version: e.order_version }));
+        current.materials = materials;
+        current.historyStatus = "ready";
+      }
+      if (generation !== orderReadGeneration.current) return;
+      setSelectedOrder(open => open?.id === selectedOrder.id ? current ?? null : open);
+    }
+  }
+
+  async function executeOrderCommand(request: OrderCommandRequest) {
+    if (onlineMode) { await orderRepository.execute(request); await refreshOrders(); return; }
+    const latest = loadDemoOperations({ workOrders, alerts });
+    const order = operationsForSite(latest.workOrders,activeJobsite.id,masterData.jobsites).find(o => o.id === request.orderId);
+    const actor = masterData.users.find(u => u.id === currentUser.id);
+    if (!order || !actor || !masterData.jobsites.find(s => s.id === activeJobsite.id)?.active) throw new OrderCommandError("denied", "ไม่มีสิทธิ์ดำเนินการใบงานนี้");
+    const assignee = masterData.users.find(u => u.id === request.assigneeId);
+    if (request.command === "assign" && !assignee) throw new OrderCommandError("invalid", "เลือกผู้รับผิดชอบ");
+    let updated: WorkOrder;
+    try {
+      updated = applyDemoOrderCommand(order, activeJobsite.id, actor, request.expectedVersion,
+        request.command === "assign" ? { kind: "assign", assignee: { id: assignee!.id, role: assignee!.role, active: assignee!.active, siteIds: assignee!.jobsiteIds } }
+          : request.command === "note" ? { kind: "note", text: request.note ?? "" } : request.command === "return" ? { kind: "return", reason: request.note ?? "" } : { kind: request.command }, new Date().toISOString());
+    } catch (e) { throw new OrderCommandError((order.version ?? 1) !== request.expectedVersion ? "conflict" : "invalid", e instanceof Error ? e.message : "คำสั่งไม่ถูกต้อง"); }
+    if (assignee) updated.assignee = assignee.displayName;
+    const next = { ...latest, workOrders: latest.workOrders.map(o => o.id === order.id ? updated : o) };
+    if (!saveDemoOperations(next)) throw new OrderCommandError("failed", "บันทึกในเบราว์เซอร์ไม่ได้");
+    setWorkOrders(next.workOrders); setSelectedOrder({ ...updated, historyStatus: "ready" });
+    setToast("บันทึกใบงานแล้ว");
+  }
+
+  async function executeMaterialCommand(request: MaterialRequest) {
+    if (onlineMode) { await orderRepository.material(request); await refreshOrders(); return; }
+    const latest = loadDemoOperations({ workOrders, alerts });
+    const order = operationsForSite(latest.workOrders,activeJobsite.id,masterData.jobsites).find(o => o.id === request.orderId);
+    const actor = masterData.users.find(u => u.id === currentUser.id);
+    if (!order || !actor || !masterData.jobsites.find(s => s.id === activeJobsite.id)?.active) throw new OrderCommandError("denied", "ไม่มีสิทธิ์บันทึกวัสดุ");
+    let updated: WorkOrder;
+    try { updated = applyDemoMaterial(order, activeJobsite.id, actor, request, new Date().toISOString()); }
+    catch (e) { throw new OrderCommandError((order.version ?? 1) !== request.expectedVersion ? "conflict" : "invalid", e instanceof Error ? e.message : "ข้อมูลวัสดุไม่ถูกต้อง"); }
+    const next = { ...latest, workOrders: latest.workOrders.map(o => o.id === order.id ? updated : o) };
+    if (!saveDemoOperations(next)) throw new OrderCommandError("failed", "บันทึกวัสดุในเบราว์เซอร์ไม่ได้");
+    setWorkOrders(next.workOrders); setSelectedOrder({ ...updated, historyStatus: "ready" }); setToast("บันทึกรายการวัสดุแล้ว");
+  }
+
+  function openOrder(order: WorkOrder) {
+    if (operationSiteId(order,masterData.jobsites)!==activeJobsite.id) { setToast("ใบงานนี้ไม่อยู่ในไซต์ที่เลือก"); return; }
+    const generation = ++orderReadGeneration.current;
+    setSelectedOrder({ ...order, historyStatus: onlineMode && commandsReady ? "loading" : "ready" });
+    if (onlineMode && commandsReady) Promise.all([orderRepository.history(order.id), orderRepository.materials(order.id)]).then(([events, materials]) => {
+      if (generation !== orderReadGeneration.current) return;
+      setSelectedOrder(current => current?.id === order.id ? { ...current, historyStatus: "ready", materials, events: events.map(e => ({ id: String(e.event_no), command: e.command, actorName: e.actor_name, at: e.recorded_at, note: e.note, version: e.order_version })) } : current);
+    }).catch(() => { if (generation === orderReadGeneration.current) setSelectedOrder(current => current?.id === order.id ? { ...current, historyStatus: "error" } : current); });
+  }
+
   const updateOrderStatus = (id: string, status: WorkStatus) => {
     setWorkOrders((current) =>
       current.map((order) =>
-        order.id === id
+        order.id === id && operationSiteId(order,masterData.jobsites)===activeJobsite.id
           ? {
               ...order,
+              jobsiteId: activeJobsite.id,
+              site: activeJobsite.name,
               status,
               progress:
                 status === "กำลังดำเนินการ"
@@ -1630,21 +1974,54 @@ export default function CMMSApp({
     setPresetAlert(alert);
     setCreateOpen(true);
   };
+  async function runAlarmAcknowledgement() {
+    if(!alarmOperation.current || alarmBusyRef.current)return;
+    alarmBusyRef.current=true;setAlarmBusy(true);setAlarmError("");
+    try {
+      const confirmed=await alarmOperation.current.run();assertAlarmScope();
+      const merge=(rows:AlertItem[])=>rows.map(a=>a.id===confirmed.id && a.jobsiteId===confirmed.jobsiteId ? (a.version??0)>(confirmed.version??0)?a:{...confirmed,site:activeJobsite.name}:a);
+      if(!remoteOperationsBaseline.current)throw new AlarmCommandError("failed","ยังไม่พร้อมยืนยันรายการ Alarm");
+      remoteOperationsBaseline.current={...remoteOperationsBaseline.current,alerts:merge(remoteOperationsBaseline.current.alerts)};
+      setAlerts(merge);alarmOperation.current=null;reportPending.current=false;setAlarmLocked(false);setToast("เซิร์ฟเวอร์ยืนยันการรับทราบ Alarm แล้ว");
+    }catch(e){
+      if(reportScopeRef.current!==reportScope)return;
+      setAlarmError(e instanceof Error?e.message:"ยังยืนยันการรับทราบไม่ได้");
+      if(e instanceof AlarmCommandError && e.kind!=="failed"){alarmOperation.current=null;reportPending.current=false;setAlarmLocked(false);}
+    }finally{alarmBusyRef.current=false;if(reportScopeRef.current===reportScope)setAlarmBusy(false);}
+  }
+  function acknowledgeAlarm(id:string) {
+    if(alarmBusyRef.current||reportPending.current||!scopedAlerts.some(a=>a.id===id)||currentUser.role==="user")return;
+    if(onlineMode){
+      if(alarmReady===null||commandsReady===null||operationsRemoteLoading||operationsReadError||alarmLive.blocked){setAlarmError("ยังตรวจระบบ Alarm ไม่สำเร็จ กรุณาลองโหลดอีกครั้ง");return;}
+      alarmOperation.current=createAlarmAcknowledgeOperation(id,activeJobsite.id,alarmRepository,assertAlarmScope,!alarmReady);
+      reportPending.current=true;setAlarmLocked(true);void runAlarmAcknowledgement();return;
+    }
+    setAlerts(current=>current.map(alert=>alert.id===id && operationSiteId(alert,masterData.jobsites)===activeJobsite.id ? {...alert,jobsiteId:activeJobsite.id,site:activeJobsite.name,acknowledged:true}:alert));
+    setToast("รับทราบ Alarm ใน Demo แล้ว");
+  }
 
   const allowedPages = pagesByRole[currentUser.role];
   const visibleNavItems = navItems.filter((item) => allowedPages.includes(item.id));
   const canOperate = currentUser.role !== "user";
-  const scopedWorkOrders = workOrders.filter((order) => order.site === activeJobsite.name);
-  const scopedAlerts = alerts.filter((alert) => alert.site === activeJobsite.name);
+  const scopedWorkOrders = operationsForSite(workOrders,activeJobsite.id,masterData.jobsites);
+  const scopedAlerts = operationsForSite(alerts,activeJobsite.id,masterData.jobsites);
+  const unidentifiedOperations = [...workOrders,...alerts].filter(r => operationSiteId(r,masterData.jobsites) === null).length;
   const scopedAssets: Asset[] = masterData.assets
     .filter((asset) => asset.active && asset.jobsiteId === activeJobsite.id)
     .map((asset) => ({ ...asset, site: activeJobsite.name }));
-  const scopedSchedule = pmSchedule.filter((item) => item.site === activeJobsite.name);
+  const scopedSchedule = onlineMode ? [] : operationsForSite(pmSchedule,activeJobsite.id,masterData.jobsites);
   const pageMeta = pageTitles[activePage];
   const currentPage = {
     ...pageMeta,
     subtitle: `${pageMeta.subtitle} • ${activeJobsite.name}`,
   };
+
+  if(onlineMode && liveAccessDenied) return <main className="cmms-shell"><section className="maint-form-error" role="alert">
+    <h1>สิทธิ์บัญชีหรือไซต์เปลี่ยนไป</h1><p>หยุดแสดงข้อมูลและการบันทึกของไซต์นี้ กรุณาตรวจสิทธิ์กับผู้ดูแล หรือเข้าสู่ระบบใหม่</p>
+    <button type="button" className="cmms-secondary-button" onClick={()=>{maintenanceLive.retry();alarmLive.retry();}}>ตรวจสิทธิ์อีกครั้ง</button>
+    <button type="button" className="cmms-secondary-button" disabled={reportPending.current} onClick={onLogout}>ออกจากระบบ</button>
+    {reportPending.current && <p>ยังมีคำขอที่ไม่ยืนยันผล ให้ผู้ดูแลตรวจประวัติก่อนเริ่มคำขอใหม่</p>}
+  </section></main>;
 
   return (
     <main className="cmms-shell">
@@ -1759,74 +2136,110 @@ export default function CMMSApp({
         </div>
 
         <div className="cmms-content">
-          {activePage === "dashboard" && (
+          {maintenanceLive.enabled && ["dashboard","pm","service-reports","repair-requests","reports","assets"].includes(activePage) && <aside className="wo-update-status" role={maintenanceLive.error?"alert":"status"}>
+            <p>{maintenanceLive.blocked ? maintenanceLive.error ? "ตรวจข้อมูลงานล่าสุดไม่สำเร็จ เก็บร่างเดิมไว้ หยุดแก้ไขและส่งออกจนกว่าจะยืนยันข้อมูลได้" : "กำลังตรวจข้อมูลงานและสิทธิ์ไซต์ล่าสุด ยังไม่เปิดให้บันทึกหรือส่งออก" : maintenanceLive.connection==="connected" ? "ติดตามการเปลี่ยนแปลง PM รายงาน และใบแจ้งซ่อม • ตรวจซ้ำทุก 30 วินาที" : "การเชื่อมต่ออัปเดตงานยังไม่พร้อม • ใช้ข้อมูลที่ยืนยันล่าสุดและตรวจซ้ำทุก 30 วินาที"}</p>
+            {maintenanceLive.error && <button type="button" className="cmms-secondary-button" onClick={maintenanceLive.retry}>โหลดข้อมูลงานล่าสุดอีกครั้ง</button>}
+          </aside>}
+          {alarmLive.enabled && ["dashboard","alerts"].includes(activePage) && <aside className="wo-update-status" role={alarmLive.error?"alert":"status"}>
+            <p>{alarmLive.blocked ? alarmLive.error ? "ตรวจ Alarm ล่าสุดไม่สำเร็จ ยังไม่เปิดรับทราบ กรุณาลองโหลดอีกครั้ง" : "กำลังตรวจ Alarm และสิทธิ์ไซต์ล่าสุด" : alarmLive.connection==="connected" ? "ติดตามการเปลี่ยนแปลง Alarm • ตรวจซ้ำทุก 30 วินาที" : "การเชื่อมต่อ Alarm ยังไม่พร้อม • ตรวจซ้ำทุก 30 วินาที"}</p>
+            {alarmLive.error && <button type="button" className="cmms-secondary-button" onClick={alarmLive.retry}>โหลด Alarm ล่าสุดอีกครั้ง</button>}
+          </aside>}
+          {onlineMode && (operationsRemoteLoading || operationsReadError) && ["dashboard","work-orders"].includes(activePage) && <aside className="maint-form-error" role={operationsRemoteLoading?"status":"alert"}><p>{operationsRemoteLoading?"กำลังโหลดใบงานและ Alarm ยังไม่แสดงยอดหรือเปิดให้แก้ไข":"โหลดใบงานหรือ Alarm ไม่สำเร็จ ยังยืนยันข้อมูลใหม่ไม่ได้ ไม่ใช้ยอดศูนย์หรือข้อมูล Demo แทน"}</p><button type="button" className="cmms-secondary-button" disabled={operationsRemoteLoading} onClick={()=>setAlarmLoadAttempt(v=>v+1)}>โหลดใบงานและ Alarm อีกครั้ง</button></aside>}
+          {unidentifiedOperations > 0 && <p role="alert">มีใบงานหรือ Alarm {unidentifiedOperations} รายการที่ยังยืนยันรหัสไซต์ไม่ได้ จึงไม่แสดงในไซต์นี้ กรุณาตรวจข้อมูลเดิม ชื่อไซต์ที่ซ้ำกันจะไม่ถูกเลือกให้อัตโนมัติ</p>}
+          {onlineMode && (maintenanceRemoteLoading || reportCommandsReady === null) && ["dashboard", "pm", "service-reports", "repair-requests", "reports"].includes(activePage) && <aside className="maint-form-error" role={maintenanceRemoteLoading ? "status" : "alert"}><p>{maintenanceRemoteLoading ? "กำลังโหลดข้อมูลงานออนไลน์ ยังไม่แสดงยอดหรือเปิดให้แก้ไขและส่งออก" : "โหลดข้อมูลงานหรือตรวจระบบบันทึกรายงานไม่สำเร็จ ยังยืนยันยอดไม่ได้ จึงหยุดการแก้ไขและส่งออก ไม่ใช้ข้อมูล Demo แทน"}</p><button type="button" className="maint-button secondary" disabled={maintenanceRemoteLoading} onClick={() => setMaintenanceLoadAttempt(value => value + 1)}>ตรวจระบบบันทึกรายงานอีกครั้ง</button></aside>}
+          {activePage === "dashboard" && !(onlineMode && (maintenanceRemoteLoading || reportCommandsReady === null || operationsRemoteLoading || operationsReadError || maintenanceLive.blocked || alarmLive.blocked)) && (
             <DashboardPage
               alerts={scopedAlerts}
               orders={scopedWorkOrders}
               schedule={scopedSchedule}
               siteAssets={scopedAssets}
-              pmCompliance={activeJobsite.pmCompliance}
+              pmCompliance={onlineMode ? null : activeJobsite.pmCompliance}
               maintenanceState={maintenanceState}
               jobsiteId={activeJobsite.id}
               canOperate={canOperate}
               onCreate={() => setCreateOpen(true)}
               onNavigate={navigate}
-              onSelectOrder={setSelectedOrder}
+              onSelectOrder={openOrder}
             />
           )}
-          {activePage === "work-orders" && (
-            <WorkOrdersPage orders={scopedWorkOrders} canOperate={canOperate} onSelect={setSelectedOrder} onCreate={() => setCreateOpen(true)} />
+          {activePage === "work-orders" && !(onlineMode && (operationsRemoteLoading || operationsReadError)) && (
+            <>
+              {onlineMode && commandsReady && <p className="wo-update-status" role="status">{orderUpdateConnection === "connecting" ? "กำลังเชื่อมต่อการติดตามใบงาน…" : orderUpdateConnection === "connected" ? "ติดตามการเปลี่ยนแปลงใบงาน • ตรวจซ้ำทุก 30 วินาที" : "การอัปเดตอัตโนมัติขัดข้อง • จะตรวจข้อมูลใหม่ทุก 30 วินาที"}</p>}
+              <WorkOrdersPage key={`${currentUser.id}:${currentUser.role}:${activeJobsite.id}`} reportActor={{ userId: currentUser.id, role: currentUser.role }} materialVerified={!onlineMode || (commandsReady === true && !liveAccessDenied && !alarmLive.blocked)} reportSite={activeJobsite} reportScope={`${currentUser.id}:${currentUser.role}:${activeJobsite.id}`} reportMode={onlineMode ? "online" : "demo"} orders={scopedWorkOrders} canOperate={currentUser.role === "admin"} onSelect={openOrder} onCreate={() => setCreateOpen(true)} />
+            </>
           )}
-          {activePage === "pm" && (
+          {activePage === "pm" && !(onlineMode && (maintenanceRemoteLoading || reportCommandsReady === null)) && (
+            <fieldset className="cmms-live-fieldset" disabled={maintenanceLive.blocked}>
             <MaintenancePlansPage
+              liveRead={{blocked:maintenanceLive.blocked,error:!!maintenanceLive.error,retry:maintenanceLive.retry}}
               activeJobsite={activeJobsite}
               currentUser={currentUser}
               assets={scopedAssets}
               state={maintenanceState}
               setState={setMaintenanceState}
               onToast={setToast}
+              planCommands={onlineMode && planCommandsReady ? { repository: planRepository, refresh: refreshPlan, assertCurrent: assertReportScope, onPendingChange: active => { reportPending.current = active; } } : undefined}
             />
+            </fieldset>
           )}
-          {activePage === "service-reports" && (
+          {activePage === "service-reports" && !(onlineMode && (maintenanceRemoteLoading || reportCommandsReady === null)) && (
+            <fieldset className="cmms-live-fieldset" disabled={maintenanceLive.blocked}>
             <ServiceReportsPage
+              liveRead={{blocked:maintenanceLive.blocked,error:!!maintenanceLive.error,retry:maintenanceLive.retry}}
               activeJobsite={activeJobsite}
               currentUser={currentUser}
               assets={scopedAssets}
               state={maintenanceState}
               setState={setMaintenanceState}
               onToast={setToast}
+              reportWritesLocked={onlineMode && (reportCommandsReady === null || maintenanceRemoteLoading)}
+              reportReadinessLoading={maintenanceRemoteLoading}
+              onRetryReportReadiness={() => setMaintenanceLoadAttempt(value => value + 1)}
+              reportCommands={onlineMode && reportCommandsReady ? { repository: reportRepository, refresh: refreshReport, onPendingChange: active => { reportPending.current = active; }, assertCurrent: assertReportScope, isPending: () => reportPending.current } : undefined}
               onReportApproved={(report) => {
+                if (commandsReady || reportCommandsReady) return; // Report approval counts Actual; work order acceptance is a separate explicit command.
                 if (!report.workOrderId) return;
                 setWorkOrders((current) => current.map((order) => order.id === report.workOrderId ? { ...order, status: "เสร็จสิ้น", progress: 100 } : order));
               }}
             />
+            </fieldset>
           )}
-          {activePage === "repair-requests" && (
+          {activePage === "repair-requests" && !(onlineMode && (maintenanceRemoteLoading || reportCommandsReady === null)) && (
+            <fieldset className="cmms-live-fieldset" disabled={maintenanceLive.blocked}>
             <div className="cmms-repair-requests-page">
               <RepairRequestsPage
+                liveRead={{blocked:maintenanceLive.blocked,error:!!maintenanceLive.error,retry:maintenanceLive.retry}}
                 activeJobsite={activeJobsite}
                 currentUser={currentUser}
                 assets={scopedAssets}
                 state={maintenanceState}
                 setState={setMaintenanceState}
                 onToast={setToast}
+                linkedRepairsLocked={onlineMode && reportCommandsReady === true && !repairCommandsReady}
+                repairCommands={onlineMode && repairCommandsReady ? { repository: repairRepository, refresh: refreshRepair, assertCurrent: assertReportScope, onPendingChange: active => { reportPending.current = active; } } : undefined}
               />
             </div>
+            </fieldset>
           )}
-          {activePage === "assets" && <AssetsPage siteAssets={scopedAssets} />}
+          {activePage === "assets" && <AssetsPage key={reportScope} siteAssets={scopedAssets} workOrders={scopedWorkOrders} maintenance={maintenanceState} loading={maintenanceRemoteLoading || operationsRemoteLoading} historyError={onlineMode && (maintenanceLive.blocked || operationsReadError || !remoteMaintenanceBaseline.current || !remoteOperationsBaseline.current)} onSelectOrder={openOrder} reportSite={activeJobsite} reportScope={reportScope} reportMode={onlineMode ? "online" : "demo"} registerVerified={!onlineMode || !(maintenanceLive.blocked || alarmLive.blocked || liveAccessDenied)} />}
           {activePage === "sites" && <SitesPage sites={allowedJobsites} />}
-          {activePage === "alerts" && (
+          {activePage === "alerts" && <>
+            {onlineMode && (operationsRemoteLoading || alarmReady===null || commandsReady===null || operationsReadError) && <aside role={operationsRemoteLoading?"status":"alert"} className="maint-form-error"><p>{operationsRemoteLoading?"กำลังตรวจระบบ Alarm ยังไม่เปิดรับทราบ":"โหลดหรือตรวจระบบ Alarm ไม่สำเร็จ ยังไม่ยืนยันข้อมูลใหม่"}</p><button type="button" className="cmms-secondary-button" disabled={operationsRemoteLoading} onClick={()=>setAlarmLoadAttempt(v=>v+1)}>ตรวจระบบ Alarm อีกครั้ง</button></aside>}
+            {alarmBusy && <p role="status">กำลังบันทึกและตรวจการรับทราบจากเซิร์ฟเวอร์…</p>}
+            {alarmLocked && <p role="status">เก็บคำขอรับทราบเดิมไว้ กรุณาอย่าเปลี่ยนหน้า บัญชี หรือไซต์จนตรวจผลได้</p>}
+            {alarmError && <div role="alert" className="maint-form-error"><p>{alarmError}</p>{alarmLocked && <button className="cmms-secondary-button" disabled={alarmBusy} onClick={()=>void runAlarmAcknowledgement()}>ลองคำขอรับทราบเดิมอีกครั้ง</button>}</div>}
+            {(!onlineMode || remoteOperationsBaseline.current) && (
             <AlertsPage
               alerts={scopedAlerts}
               canOperate={canOperate}
-              onAcknowledge={(id) => {
-                setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, acknowledged: true } : alert));
-                setToast(`รับทราบ Alarm ${id} แล้ว`);
-              }}
+              locked={alarmLocked || (onlineMode && (alarmLive.blocked || alarmReady===null || commandsReady===null || operationsRemoteLoading || operationsReadError))}
+              onAcknowledge={acknowledgeAlarm}
               onCreateOrder={openOrderFromAlert}
             />
-          )}
-          {activePage === "reports" && <PerformanceReportsPage activeJobsite={activeJobsite} state={maintenanceState} />}
+            )}</>}
+          {activePage === "guide" && <Suspense fallback={<p role="status">กำลังเปิดคู่มือ…</p>}><UserGuide role={currentUser.role} onlineMode={onlineMode} onNavigate={navigate} /></Suspense>}
+          {activePage === "uat" && <Suspense fallback={<p role="status">กำลังเปิดชุดทดสอบ…</p>}><UatWorkspace key={`${currentUser.id}:${currentUser.role}:${activeJobsite.id}:${onlineMode}`} scope={{ userId: currentUser.id, role: currentUser.role, siteId: activeJobsite.id, mode: onlineMode ? "supabase" : "demo" }} /></Suspense>}
+          {activePage === "reports" && !(onlineMode && (maintenanceRemoteLoading || reportCommandsReady === null || maintenanceLive.blocked)) && <><PerformanceReportsPage key={reportScope} activeJobsite={activeJobsite} state={maintenanceState} mode={onlineMode ? "online" : "demo"} scopeKey={reportScope} /><SiteHistoryReport key={`history:${reportScope}`} orders={scopedWorkOrders} maintenance={maintenanceState} siteId={activeJobsite.id} siteName={activeJobsite.name} scopeKey={reportScope} mode={onlineMode ? "online" : "demo"} verified={!onlineMode || !(operationsRemoteLoading || operationsReadError || liveAccessDenied || alarmLive.blocked || !remoteMaintenanceBaseline.current || !remoteOperationsBaseline.current)} /></>}
           {activePage === "iot" && <IoTMonitor jobsiteId={activeJobsite.id} searchTerm={globalSearch} onNotify={setToast} />}
           {activePage === "admin" && (
             <AdminWorkspace
@@ -1840,7 +2253,7 @@ export default function CMMSApp({
         </div>
       </div>
 
-      {createOpen && canOperate && scopedAssets.length > 0 && (
+      {createOpen && currentUser.role === "admin" && scopedAssets.length > 0 && (
         <CreateWorkOrderModal
           siteAssets={scopedAssets}
           onClose={() => {
@@ -1855,9 +2268,12 @@ export default function CMMSApp({
         <WorkOrderDrawer
           order={selectedOrder}
           siteAssets={scopedAssets}
-          canOperate={canOperate}
+          canOperate={canOperate && commandsReady !== null}
+          unavailable={onlineMode && (operationsRemoteLoading || operationsReadError)}
           onClose={() => setSelectedOrder(null)}
           onUpdateStatus={updateOrderStatus}
+          user={currentUser} assignees={orderAssignees} commands={commandsReady === true}
+          onExecute={executeOrderCommand} onRefresh={refreshOrders} onMaterial={executeMaterialCommand}
         />
       )}
       {profileModalOpen && (

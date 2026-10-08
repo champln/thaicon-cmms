@@ -1,0 +1,209 @@
+// Local Demo only. Uses a new, non-persistent Chrome context, never user tabs.
+// node scripts/test-work-order-ui.mjs <absolute Playwright module> <output dir>
+import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
+import { mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { syntheticPhoto } from './synthetic-photo.mjs';
+const playwright = await import(pathToFileURL(process.argv[2]).href);
+const { chromium } = playwright.default ?? playwright;
+const output = resolve(process.argv[3]);
+await mkdir(output, { recursive: true });
+const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const errors = [];
+try {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const page = await context.newPage();
+  page.setDefaultTimeout(7000);
+  page.on('pageerror', error => errors.push(error.message));
+  async function login(username) {
+    await page.getByPlaceholder('เช่น admin').fill(username);
+    await page.getByPlaceholder('กรอกรหัสผ่าน').fill('demo123');
+    await page.getByRole('button', { name: /เข้าสู่ระบบ/ }).click();
+    await page.getByRole('button', { name: /SITE-001/ }).click();
+    await page.locator('nav').getByRole('button', { name: 'ใบงาน', exact: true }).click();
+  }
+  async function logout() {
+    await page.getByRole('button', { name: 'กลับสู่หน้าเลือกไซต์', exact: true }).click();
+    await page.getByRole('button', { name: 'ออกจากระบบ', exact: true }).click();
+  }
+  const title = 'UAT-AI-20261006 Transactional WO';
+  async function open() {
+    await page.getByRole('row').filter({ hasText: title }).getByRole('button', { name: /^เปิด / }).click();
+    await page.locator('.cmms-drawer.order').waitFor();
+    assert.equal(await page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null), true);
+  }
+  const drawer = page.locator('.cmms-drawer.order');
+  await page.goto(process.env.TEST_DEMO_URL || 'http://127.0.0.1:5181/');
+  await login('admin');
+  await page.getByRole('button', { name: 'สร้างใบงาน', exact: true }).click();
+  const form = page.locator('.cmms-modal');
+  await form.getByLabel('ชื่องาน', { exact: true }).fill(title);
+  await form.getByLabel('กำหนดเสร็จ', { exact: true }).fill('7 ต.ค. 2569 16:00');
+  await form.getByLabel('รายละเอียด', { exact: true }).fill('ทดสอบข้อมูลคงอยู่หลังรีเฟรช');
+  await form.getByRole('button', { name: 'สร้างใบงาน', exact: true }).click();
+  await open();
+  await drawer.getByRole('combobox').selectOption('USR-ENG-001');
+  await drawer.getByRole('button', { name: 'มอบหมายงาน', exact: true }).click();
+  await drawer.getByText('มอบหมายงาน', { exact: true }).first().waitFor();
+  await page.reload();
+  await page.locator('nav').getByRole('button', { name: 'ใบงาน', exact: true }).click();
+  await open();
+  assert.match(await drawer.innerText(), /ทดสอบข้อมูลคงอยู่หลังรีเฟรช/);
+  assert.equal(await drawer.locator('.cmms-timeline > p').count(), 2);
+  await drawer.getByRole('button', { name: 'ปิด', exact: true }).click();
+  await logout();
+  await login('engineer');
+  assert.equal(await page.getByRole('button', { name: 'สร้างใบงาน', exact: true }).count(), 0);
+  await open();
+  assert.equal(await drawer.getByRole('button', { name: 'มอบหมายงาน', exact: true }).count(), 0);
+  await drawer.getByRole('button', { name: 'เริ่มงาน', exact: true }).click();
+  await drawer.getByRole('button', { name: 'ส่งตรวจรับ', exact: true }).waitFor();
+  await drawer.getByLabel('ชื่ออะไหล่ / วัสดุ').fill('ไส้กรองทดสอบ');
+  await drawer.getByLabel('จำนวน', { exact: true }).fill('2.5');
+  await drawer.getByLabel('หน่วย', { exact: true }).fill('ชิ้น');
+  await drawer.getByRole('button', { name: 'บันทึกวัสดุ', exact: true }).click();
+  await drawer.locator('.wo-material').waitFor();
+  await drawer.getByLabel('เหตุผลยกเลิกรายการ').fill('จำนวนผิด');
+  await drawer.getByRole('button', { name: 'ยกเลิกรายการ ไส้กรองทดสอบ', exact: true }).click();
+  await drawer.getByText(/ยกเลิก: จำนวนผิด/).waitFor();
+  await drawer.getByLabel('ชื่ออะไหล่ / วัสดุ').fill('ไส้กรองทดสอบ');
+  await drawer.getByLabel('จำนวน', { exact: true }).fill('1.25');
+  await drawer.getByLabel('หน่วย', { exact: true }).fill('ชิ้น');
+  await drawer.getByRole('button', { name: 'บันทึกวัสดุ', exact: true }).click();
+  await drawer.locator('.wo-material').nth(1).waitFor();
+  await drawer.getByLabel('บันทึก / เหตุผลส่งกลับ').fill('ตรวจและล้างเครื่องเรียบร้อย');
+  await drawer.getByRole('button', { name: 'เพิ่มบันทึก', exact: true }).click();
+  await drawer.getByText('ตรวจและล้างเครื่องเรียบร้อย', { exact: true }).waitFor();
+  await drawer.getByRole('button', { name: 'ส่งตรวจรับ', exact: true }).click();
+  await drawer.locator('.cmms-status.review').waitFor();
+  assert.equal(await drawer.getByRole('button', { name: 'ตรวจรับและปิดงาน', exact: true }).count(), 0);
+  await drawer.getByRole('button', { name: 'ปิด', exact: true }).click();
+  await logout();
+  await login('admin');
+  await open();
+  await drawer.getByLabel('บันทึก / เหตุผลส่งกลับ').fill('เพิ่มรายละเอียดการทดสอบ');
+  await drawer.getByRole('button', { name: 'ส่งกลับแก้ไข', exact: true }).click();
+  await drawer.getByRole('button', { name: 'ส่งตรวจรับ', exact: true }).waitFor();
+  await drawer.getByRole('button', { name: 'ส่งตรวจรับ', exact: true }).click();
+  await drawer.getByRole('button', { name: 'ตรวจรับและปิดงาน', exact: true }).click();
+  await drawer.getByText('ใบงานนี้ตรวจรับแล้ว', { exact: true }).waitFor();
+  assert.equal(await drawer.locator('.cmms-timeline > p').count(), 11);
+  await drawer.evaluate(element => { element.scrollTop = 0; });
+  await page.screenshot({ path: resolve(output, 'work-order-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await drawer.evaluate(element => { element.scrollTop = 0; });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
+  await page.screenshot({ path: resolve(output, 'work-order-mobile.png'), fullPage: true });
+  await page.reload();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator('nav').getByRole('button', { name: 'ใบงาน', exact: true }).click();
+  await open();
+  await drawer.getByText('ใบงานนี้ตรวจรับแล้ว', { exact: true }).waitFor();
+  assert.equal(await drawer.locator('.cmms-timeline > p').count(), 11);
+  assert.equal(await drawer.locator('.wo-material').count(), 2);
+  await page.keyboard.press('Escape');
+  await drawer.waitFor({ state: 'hidden' });
+  await logout();
+  await login('user');
+  assert.equal(await page.getByRole('button', { name: 'สร้างใบงาน', exact: true }).count(), 0);
+  await page.getByLabel('ค้นหาใบงาน').fill(title);
+  await open();
+  assert.equal(await drawer.locator('.wo-material').count(), 2);
+  for (const label of ['มอบหมายงาน', 'เริ่มงาน', 'เพิ่มบันทึก', 'ส่งตรวจรับ', 'ตรวจรับและปิดงาน', 'บันทึกวัสดุ']) {
+    assert.equal(await drawer.getByRole('button', { name: label, exact: true }).count(), 0);
+  }
+  const workOrderDownload = page.waitForEvent('download', { timeout: 15000 });
+  await drawer.getByRole('button', { name: 'ดาวน์โหลด Excel', exact: true }).click();
+  await (await workOrderDownload).saveAs(resolve(output, 'work-order.xlsx'));
+  const workOrderPdf = page.waitForEvent('download', { timeout: 15000 });
+  await drawer.getByRole('button', { name: 'ดาวน์โหลด PDF', exact: true }).click();
+  await (await workOrderPdf).saveAs(resolve(output, 'work-order.pdf'));
+  await drawer.getByRole('button', { name: 'ปิด', exact: true }).click();
+  await page.getByRole('button', { name: 'ตัวกรอง', exact: true }).click();
+  for (const [label, filename] of [['รายงานวัสดุ Excel', 'material-ledger-demo.xlsx'], ['รายงานวัสดุ PDF', 'material-ledger-demo.pdf']]) {
+    const download = page.waitForEvent('download', { timeout: 30000 });
+    await page.getByRole('button', { name: label, exact: true }).click();
+    await (await download).saveAs(resolve(output, filename));
+    await page.waitForFunction(() => document.querySelector('[aria-label="ส่งออกรายงานวัสดุตามตัวกรองใบงาน"]')?.getAttribute('aria-busy') === 'false');
+  }
+  await page.getByLabel('สร้างตั้งแต่วันที่ (ไทย)').fill('2200-01-01');
+  assert.equal(await page.getByRole('row').filter({ hasText: title }).count(),0);
+  await page.getByRole('button', { name: 'ล้างตัวกรอง', exact: true }).click();
+  await page.locator('nav').getByRole('button', { name: 'เครื่องจักร', exact: true }).click();
+  await page.getByLabel('ค้นหาเครื่องจักร').fill('CR-DP-02');
+  await page.locator('.cmms-asset-card').click();
+  await page.getByRole('button', { name: /^เปิดใบงาน / }).filter({ hasText: /WO-/ }).last().click();
+  await drawer.waitFor();
+  assert.equal(await drawer.getByRole('button', { name: 'บันทึกวัสดุ', exact: true }).count(),0);
+  await page.keyboard.press('Escape');
+  // Synthetic fixture in this isolated browser ONLY, to exercise literal text.
+  await page.evaluate(() => {
+    const key = 'thaicon-cmms-maintenance-v3';
+    const state = JSON.parse(localStorage.getItem(key));
+    const source = state.serviceReports.find(report => report.jobsiteId === 'SITE-001');
+    state.serviceReports.push({ ...source, id: 'SR-UAT-FORMULA', status: 'draft', approvedBy: null, approvedAt: null, workPerformed: '=HYPERLINK("https://example.invalid")', quantity: 1 });
+    state.serviceReports.push({ ...source,id:'SR-UAT-PDF-ERROR',status:'draft',approvedBy:null,approvedAt:null,attachments:[{id:crypto.randomUUID(),name:'ภาพทดสอบ',type:'image/png',dataUrl:'https://pdf-fixture.example.invalid/proof.png'}] });
+    localStorage.setItem(key, JSON.stringify(state));
+  });
+  await page.reload();
+  await page.locator('nav').getByRole('button', { name: 'รายงาน', exact: true }).click();
+  const displayedActual = Number((await page.locator('.maint-report-kpis > div').nth(1).locator('strong').innerText()).replaceAll(',', ''));
+  const downloaded = page.waitForEvent('download', { timeout: 15000 });
+  await page.getByRole('button', { name: 'ดาวน์โหลด Excel', exact: true }).click();
+  const file = await downloaded.catch(error => { console.error('Export diagnostics:', errors, page.url()); return page.locator('body').innerText().then(body => { console.error(body.slice(-3500)); throw error; }); });
+  assert.match(file.suggestedFilename(), /^PM-Performance-SITE-001-\d{4}\.xlsx$/);
+  await file.saveAs(resolve(output, 'performance.xlsx'));
+  console.log(`Excel downloaded; displayed Actual=${displayedActual}`);
+  await page.getByRole('combobox', { name: /^เดือน/ }).selectOption('1');
+  const filtered = page.waitForEvent('download', { timeout: 15000 });
+  await page.getByRole('button', { name: 'ดาวน์โหลด Excel', exact: true }).click();
+  await (await filtered).saveAs(resolve(output, 'performance-january.xlsx'));
+  let photoAvailable=false,incompleteDownloads=0;
+  await page.route('https://pdf-fixture.example.invalid/proof.png',route=>route.fulfill({status:photoAvailable?200:404,contentType:'image/png',headers:{'Access-Control-Allow-Origin':'*','Cache-Control':'no-store'},body:photoAvailable?syntheticPhoto:Buffer.alloc(0)}));
+  page.on('download',()=>incompleteDownloads++);
+  await page.locator('nav').getByRole('button',{name:'Service Report',exact:true}).click();
+  await page.getByRole('row').filter({hasText:'SR-UAT-PDF-ERROR'}).getByRole('button',{name:'เปิด',exact:true}).click();
+  const reportDetail=page.locator('.maint-detail-modal');
+  await reportDetail.getByRole('button',{name:'ดาวน์โหลด PDF',exact:true}).click();
+  await reportDetail.getByRole('alert').filter({hasText:'โหลดภาพหลักฐานไม่สำเร็จ'}).waitFor();
+  assert.equal(incompleteDownloads,0);
+  assert.equal(await reportDetail.getByRole('button',{name:'ดาวน์โหลด PDF',exact:true}).isEnabled(),true);
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false);
+  await reportDetail.getByRole('alert').scrollIntoViewIfNeeded();
+  await page.screenshot({path:resolve(output,'service-report-pdf-error-mobile.png'),fullPage:true});
+  photoAvailable=true;
+  const photoPdf=page.waitForEvent('download',{timeout:15000});
+  await reportDetail.getByRole('button',{name:'ดาวน์โหลด PDF',exact:true}).click();
+  await(await photoPdf).saveAs(resolve(output,'service-report-photo-retry.pdf'));
+  assert.equal(incompleteDownloads,1);
+  assert.equal(await reportDetail.getByRole('alert').count(),0);
+  await page.setViewportSize({width:1440,height:1000});
+  // Preserve old Demo records without an ID: uniquely named sites resolve at
+  // read time for BOTH list and asset history; duplicate names never guess.
+  const legacyAsset=await page.evaluate(()=>{
+    const key='thaicon-cmms-demo-operations-v1',state=JSON.parse(localStorage.getItem(key));
+    const original=state.workOrders.find(o=>o.title==='UAT-AI-20261006 Transactional WO');
+    const legacy={...original,id:'WO-LEGACY-SITE',title:'Legacy unique site history'};delete legacy.jobsiteId;
+    state.workOrders.push(legacy);localStorage.setItem(key,JSON.stringify(state));return legacy.assetId;
+  });
+  await page.reload();await page.locator('nav').getByRole('button',{name:'ใบงาน',exact:true}).click();await page.getByRole('row').filter({hasText:'Legacy unique site history'}).waitFor();
+  await page.locator('nav').getByRole('button',{name:'เครื่องจักร',exact:true}).click();await page.locator('.cmms-asset-card').filter({hasText:legacyAsset}).click();await page.getByText('WO-LEGACY-SITE • Legacy unique site history',{exact:true}).waitFor();
+  const rawAmbiguous=await page.evaluate(async()=>{
+    const masterKey='thaicon-cmms-master-data-v1',master=JSON.parse(localStorage.getItem(masterKey)||'null')??(await import('/src/master-data.ts')).buildDefaultMasterData();
+    const name=master.jobsites.find(s=>s.id==='SITE-001').name;master.jobsites.find(s=>s.id==='SITE-002').name=name;localStorage.setItem(masterKey,JSON.stringify(master));
+    const key='thaicon-cmms-demo-operations-v1',state=JSON.parse(localStorage.getItem(key)),legacy=state.workOrders.find(o=>o.id==='WO-LEGACY-SITE');
+    state.workOrders.push({...legacy,id:'WO-INVALID-SITE',title:'Invalid explicit site record',jobsiteId:'SITE-UNKNOWN'});
+    const raw=JSON.stringify(state);localStorage.setItem(key,raw);return raw;
+  });
+  await page.reload();await page.locator('nav').getByRole('button',{name:'ใบงาน',exact:true}).click();
+  await page.getByRole('alert').filter({hasText:'ยังยืนยันรหัสไซต์ไม่ได้'}).waitFor();
+  assert.equal(await page.getByRole('row').filter({hasText:'Legacy unique site history'}).count(),0);
+  assert.equal(await page.getByRole('row').filter({hasText:'Invalid explicit site record'}).count(),0);
+  assert.equal(await page.evaluate(()=>localStorage.getItem('thaicon-cmms-demo-operations-v1')),rawAmbiguous);
+  console.log('PASS: legacy uniquely named Demo WO remains in list and asset history; ambiguous names/invalid explicit IDs hidden with explanation; raw stored records unchanged');
+  assert.deepEqual(errors, []);
+  console.log('PASS: Demo workflow/materials/reload, User read-only/export; Service Report photo failure visible/no incomplete PDF, retry succeeds/mobile no overflow; zero page errors');
+  await context.close();
+} finally { await browser.close(); }

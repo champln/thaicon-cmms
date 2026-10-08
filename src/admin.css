@@ -50,3 +50,8 @@
 .admin-form .admin-check input { min-height: 0; }
 .admin-form-actions { border-top: 1px solid #e5ebf0; display: flex; gap: 8px; justify-content: flex-end; margin: 4px -22px -20px; padding: 15px 22px; }
 @media (max-width: 760px) { .admin-toolbar { align-items: stretch; flex-direction: column; gap: 14px; }.admin-toolbar label { min-width: 0; }.admin-tabs { overflow-x: auto; }.admin-tabs button { white-space: nowrap; }.admin-form { grid-template-columns: 1fr; }.admin-form .wide, .admin-form fieldset, .admin-form-actions { grid-column: 1; }.admin-site-checks { grid-template-columns: 1fr; } }
+.asset-location-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.asset-location-fields label { display: grid; gap: 5px; color: #40566c; font-size: 14px; font-weight: 700; }
+.asset-location-empty { padding: 0 22px 18px; }
+.admin-form input[readonly] { background: #f3f6f8; }
+@media (max-width: 760px) { .asset-location-fields { grid-template-columns: 1fr; } }
