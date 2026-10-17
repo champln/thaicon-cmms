@@ -17,11 +17,13 @@
     "@fontsource-variable/anuphan": "^5.3.0",
     "@supabase/supabase-js": "^2.112.3",
     "jspdf": "^4.2.1",
+    "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "write-excel-file": "4.1.1"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.0",

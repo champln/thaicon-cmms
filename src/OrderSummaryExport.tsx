@@ -38,9 +38,9 @@ export default function OrderSummaryExport({ orders, filters, siteId, siteName, 
     }
   }
   return <div className="wo-search-filters" aria-label="ส่งออกรายงานใบงานตามตัวกรอง" aria-busy={busy}>
-    <p>รายงานใบงาน งานค้าง และระยะเวลา ตามตัวกรอง • เวลาที่ไม่ทราบไม่ถูกนับเป็นศูนย์</p>
+    <p>ใบงาน งานค้าง และระยะเวลาตามตัวกรอง • ไม่นับเวลาที่ไม่ทราบเป็นศูนย์</p>
     <button className="cmms-secondary-button" type="button" disabled={busy || !result.report} onClick={() => void exportReport("xlsx")}>รายงานใบงาน Excel</button>
     <button className="cmms-secondary-button" type="button" disabled={busy || !result.report} onClick={() => void exportReport("pdf")}>รายงานใบงาน PDF</button>
-    {(result.error || message || busy) && <p role={result.error ? "alert" : "status"}>{result.error || (busy ? "กำลังสร้างรายงาน กรุณารอสักครู่..." : message)}</p>}
+    {(result.error || message || busy) && <p role={result.error ? "alert" : "status"}>{result.error || (busy ? "กำลังสร้างรายงาน..." : message)}</p>}
   </div>;
 }

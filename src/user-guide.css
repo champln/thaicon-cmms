@@ -1,4 +1,4 @@
-.user-guide { --guide-ink:#17324d; --guide-muted:#485f73; --guide-accent:#086b93; --guide-border:#cbd9e3; color:var(--guide-ink); font-size:16px; line-height:1.7; max-width:1120px; margin:0 auto; }
+.user-guide { --guide-ink:#17324d; --guide-muted:#485f73; --guide-accent:#086b93; --guide-border:#cbd9e3; color:var(--guide-ink); font-size: var(--ui-text-body); line-height:1.7; max-width:1120px; margin:0 auto; }
 .user-guide * { box-sizing:border-box; }
 .guide-intro { padding:28px; background:#eaf5fb; border:1px solid var(--guide-border); border-radius:14px; }
 .guide-intro h2 { font-size:clamp(24px,3vw,34px); margin:8px 0; }
@@ -12,12 +12,12 @@
 .user-guide :is(button,input,summary):focus-visible { outline:3px solid var(--guide-accent); outline-offset:3px; }
 .guide-progress { padding:16px 20px; background:white; border-radius:10px; border:1px solid var(--guide-border); }
 .guide-progress progress { display:block; width:100%; height:12px; margin-top:10px; accent-color:var(--guide-accent); }
-.guide-progress p,.user-guide footer { font-size:14px; color:var(--guide-muted); }
+.guide-progress p,.user-guide footer { font-size: var(--ui-text-body); color:var(--guide-muted); }
 .guide-topics { display:grid; gap:12px; }
 .guide-card { border:1px solid var(--guide-border); border-radius:12px; background:#fff; overflow:hidden; }
 .guide-card summary { cursor:pointer; padding:18px 20px; min-height:48px; }
 .guide-card summary strong { font-size:18px; }
-.guide-card summary small { display:block; font-size:15px; color:var(--guide-muted); margin-left:40px; }
+.guide-card summary small { display:block; font-size: var(--ui-text-body); color:var(--guide-muted); margin-left:40px; }
 .guide-number { display:inline-block; margin-right:12px; font-weight:700; color:var(--guide-accent); }
 .guide-body { padding:0 24px 24px; border-top:1px solid var(--guide-border); }
 .guide-body ol { padding-left:26px; }

@@ -1,4 +1,6 @@
 :root {
+  --ui-text-body: 1.125rem;
+  --ui-text-small: 1rem;
   font-family: "Anuphan Variable", "Noto Sans Thai", "Leelawadee UI", Tahoma, Arial, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,6 +17,8 @@ html {
 }
 
 body {
+  font-size: var(--ui-text-body);
+  line-height: 1.6;
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
@@ -31,4 +35,8 @@ textarea {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+@media (max-width: 680px) {
+  :root { --ui-text-body: 1rem; --ui-text-small: .875rem; }
 }

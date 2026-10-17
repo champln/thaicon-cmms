@@ -1,0 +1,75 @@
+/* Shared reading scale; component CSS retains heading and KPI hierarchy. */
+.cmms-work-orders-page .cmms-list-toolbar { display: flex; flex-direction: column; align-items: stretch; padding: 20px; gap: 20px; }
+.cmms-work-orders-page .cmms-tabs { flex-wrap: wrap; gap: 8px; overflow: visible; }
+.cmms-work-orders-page .cmms-tabs button { white-space: nowrap; padding: 10px 14px; gap: 8px; color: #52657a; }
+.cmms-work-orders-page .cmms-tabs button.active { color: #096dc9; }
+.cmms-work-orders-page .cmms-tabs button span { height: auto; min-width: 24px; line-height: 1.5; }
+.cmms-work-orders-page .cmms-list-actions { display: flex; gap: 12px; width: 100%; }
+.cmms-work-orders-page .cmms-inline-search { flex: 1; width: auto; height: 48px; background: #fff; }
+.cmms-work-orders-page .cmms-inline-search:focus-within { outline: 2px solid #1272c4; outline-offset: 2px; }
+.cmms-work-orders-page .cmms-list-actions button { flex: 0 0 auto; white-space: nowrap; min-height: 48px; padding: 10px 18px; }
+.cmms-work-orders-page .wo-result-count { margin: 0; padding: 18px 20px 10px; font-weight: 600; }
+.wo-export-panel { margin: 0 20px 20px; border: 1px solid var(--cmms-line); border-radius: 10px; background: #f8fafc; }
+.wo-export-panel summary { cursor: pointer; padding: 14px 16px; color: #284763; font-weight: 600; }
+.wo-export-panel summary span { font-size: var(--ui-text-small); font-weight: 400; margin-left: 8px; color: #52657a; }
+.wo-export-panel .wo-search-filters { border-top: 1px solid var(--cmms-line); gap: 10px; margin: 0; padding: 16px; }
+.wo-export-panel .wo-search-filters p { flex-basis: 100%; margin: 0 0 6px; }
+.cmms-work-orders-page .cmms-order-title { flex-direction: column; align-items: flex-start; gap: 8px; }
+.cmms-work-orders-page .cmms-table td { vertical-align: top; }
+.cmms-work-orders-page .cmms-order-title strong { white-space: normal; }
+@media (max-width: 680px) {
+  .cmms-work-orders-page .cmms-list-toolbar { padding: 16px; gap: 16px; }
+  .cmms-work-orders-page .cmms-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cmms-work-orders-page .cmms-tabs button { justify-content: space-between; padding: 8px; font-size: 1rem; gap: 4px; }
+  .cmms-work-orders-page .cmms-list-actions { flex-wrap: wrap; }
+  .cmms-work-orders-page .cmms-inline-search { flex: 1 0 100%; box-sizing: border-box; }
+  .cmms-work-orders-page .cmms-list-actions button { flex: 1; }
+  .wo-export-panel { margin: 0 16px 16px; }
+  .wo-export-panel summary span { display: block; margin: 4px 0 0; }
+}
+.maint-report-filters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.maint-report-filters label { min-width: 0; }
+.maint-report-filters select { width: 100%; min-width: 0; }
+@media (max-width: 1100px) {
+  .maint-report-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .maint-report-filters { grid-template-columns: minmax(0, 1fr); }
+}
+:is(.cmms-shell, .access-shell, .site-select-shell) :is(p, label, input, select, textarea, td) {
+  font-size: var(--ui-text-body);
+  line-height: 1.6;
+}
+.cmms-shell :is(.cmms-order-title strong, .cmms-cell-main, .cmms-assignee, .cmms-due) {
+  font-size: var(--ui-text-body);
+}
+:is(.cmms-shell, .access-shell, .site-select-shell) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+  font-size: var(--ui-text-body);
+  min-height: 44px;
+  max-width: 100%;
+}
+:is(.cmms-shell, .access-shell, .site-select-shell) button {
+  min-height: 44px;
+}
+.cmms-shell :is(.cmms-icon-button, .cmms-mobile-menu) { min-width: 44px; }
+.cmms-sidebar { overflow-y: auto; }
+.cmms-shell :is(.cmms-status, .cmms-priority, .maint-chip, .maint-priority, .admin-status, .admin-health) {
+  height: auto;
+  line-height: 1.5;
+  white-space: normal;
+}
+:is(.maint-page-toolbar, .admin-toolbar, .admin-tabs, .maint-filter-tabs) { flex-wrap: wrap; }
+.cmms-shell :is(.maint-panel, .admin-panel, .cmms-panel, .maint-page, .admin-page) { min-width: 0; }
+.cmms-shell :is(.maint-table-wrap, .admin-table-wrap, .cmms-table-wrap) { max-width: 100%; overflow-x: auto; }
+.cmms-shell :is(.cmms-modal, .cmms-drawer, .maint-modal, .admin-modal) { overflow-wrap: anywhere; }
+.cmms-shell :is(.cmms-cell-sub, .cmms-order-title small, .admin-table-wrap td > small) { color: #52657a; }
+.site-select-user small, .site-option-top small { color: #52657a; }
+.access-footer { color: #596b7d; }
+.cmms-dashboard-page .cmms-alert-item p { font-size: var(--ui-text-body); }
+@media (max-width: 680px) {
+  .access-demo-grid { grid-template-columns: 1fr; }
+  .access-demo-grid strong { white-space: normal; }
+  .site-select-header { flex-wrap: wrap; gap: 16px; }
+  .cmms-shell :is(.maint-report-filters, .wo-search-filters) { align-items: stretch; }
+  .cmms-shell :is(.maint-report-filters, .wo-search-filters) > label { min-width: 0; max-width: 100%; }
+}

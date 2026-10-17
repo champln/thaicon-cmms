@@ -5,6 +5,7 @@ import App from "./App";
 import "./global.css";
 import "./cmms.css";
 import "./iot-monitor.css";
+import "./readability.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

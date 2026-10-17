@@ -83,7 +83,7 @@
   margin-top: 1px;
   color: #6fa3d8;
   font-family: Arial, sans-serif;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
   letter-spacing: 0.15em;
 }
@@ -92,7 +92,7 @@
   padding: 0 12px 8px;
   color: #567da8;
   font-family: Arial, sans-serif;
-  font-size: 9px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
   letter-spacing: 0.14em;
 }
@@ -115,7 +115,7 @@
   background: transparent;
   color: #91a7c0;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   font-weight: 520;
   text-align: left;
   transition: background 150ms ease, color 150ms ease;
@@ -161,7 +161,7 @@
   background: #c9404c;
   color: white;
   font-family: Arial, sans-serif;
-  font-size: 9px;
+  font-size: var(--ui-text-small);
   font-style: normal;
   font-weight: 700;
 }
@@ -195,7 +195,7 @@
 .cmms-active-jobsite span {
   color: #92a9c0;
   font-family: Arial, sans-serif;
-  font-size: 9px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
   letter-spacing: 0.07em;
 }
@@ -215,13 +215,13 @@
 .cmms-active-jobsite strong {
   margin: 7px 0 2px;
   color: #42d995;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-cloud-status small,
 .cmms-active-jobsite small {
   color: #647f9d;
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-active-jobsite {
@@ -252,7 +252,7 @@
   background: transparent;
   color: #7792ae;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
   text-align: left;
 }
 
@@ -263,7 +263,7 @@
 .cmms-work-orders-page .cmms-inline-search input,
 .cmms-assets-page .cmms-inline-search input,
 .cmms-assets-page .cmms-select {
-  font-size: 13px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-work-orders-page .cmms-tabs button span,
@@ -272,46 +272,46 @@
 .cmms-work-orders-page .cmms-priority,
 .cmms-work-orders-page .cmms-order-title small,
 .cmms-work-orders-page .cmms-cell-sub {
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-table {
-  font-size: 14px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-table th,
 .cmms-work-orders-page .cmms-cell-main,
 .cmms-work-orders-page .cmms-assignee {
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-order-title strong {
-  font-size: 14px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-assets-page .cmms-asset-stats span,
 .cmms-assets-page .cmms-asset-card > p {
-  font-size: 13px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-assets-page .cmms-health-badge,
 .cmms-assets-page .cmms-asset-id,
 .cmms-assets-page .cmms-asset-card-bottom small {
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-assets-page .cmms-asset-card h3 {
-  font-size: 16px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-assets-page .cmms-asset-card > small,
 .cmms-assets-page .cmms-asset-card-bottom strong {
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-sites-page .cmms-site-card-top small,
 .cmms-sites-page .cmms-site-metrics small {
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-sites-page .cmms-site-card h3 {
@@ -319,7 +319,7 @@
 }
 
 .cmms-sites-page .cmms-site-card > p {
-  font-size: 14px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-sites-page .cmms-site-metrics strong {
@@ -328,7 +328,7 @@
 
 .cmms-sites-page .cmms-site-footer span,
 .cmms-sites-page .cmms-site-footer button {
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-repair-requests-page .maint-page-toolbar h2 {
@@ -337,22 +337,22 @@
 
 .cmms-repair-requests-page .maint-page-toolbar p,
 .cmms-repair-requests-page .maint-table td {
-  font-size: 15px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-repair-requests-page .maint-button {
-  font-size: 14px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-repair-requests-page .maint-table th,
 .cmms-repair-requests-page .maint-row-actions button {
-  font-size: 13px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-repair-requests-page .maint-table td > small,
 .cmms-repair-requests-page .maint-status,
 .cmms-repair-requests-page .maint-priority {
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 @media (min-width: 1900px) {
@@ -365,7 +365,7 @@
   .cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-table,
   .cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-order-title strong,
   .cmms-repair-requests-page .maint-table td {
-    font-size: 16px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-page-panel.cmms-work-orders-page > .cmms-table-wrap .cmms-table th,
@@ -375,7 +375,7 @@
   .cmms-assets-page .cmms-asset-card > p,
   .cmms-repair-requests-page .maint-table th,
   .cmms-repair-requests-page .maint-row-actions button {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-work-orders-page .cmms-tabs button span,
@@ -396,7 +396,7 @@
   .cmms-repair-requests-page .maint-table td > small,
   .cmms-repair-requests-page .maint-status,
   .cmms-repair-requests-page .maint-priority {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-assets-page .cmms-asset-card h3,
@@ -405,7 +405,7 @@
   }
 
   .cmms-sites-page .cmms-site-card > p {
-    font-size: 16px;
+    font-size: var(--ui-text-body);
   }
 }
 
@@ -451,7 +451,7 @@
 .cmms-mobile-page-title p {
   margin: 2px 0 0;
   color: var(--cmms-slate-500);
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   line-height: 1.5;
 }
 
@@ -481,7 +481,7 @@
   outline: 0;
   background: transparent;
   color: var(--cmms-navy-950);
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-global-search kbd {
@@ -491,7 +491,7 @@
   background: white;
   color: #8796a7;
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-notification {
@@ -521,7 +521,7 @@
   background: var(--cmms-red-500);
   color: white;
   font-family: Arial, sans-serif;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-style: normal;
   font-weight: 700;
 }
@@ -547,7 +547,7 @@
   place-items: center;
   background: #e2f1fb;
   color: var(--cmms-blue-700);
-  font-size: 11px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
 }
 
@@ -562,13 +562,13 @@
 }
 
 .cmms-profile strong {
-  font-size: 11px;
+  font-size: var(--ui-text-small);
   font-weight: 650;
 }
 
 .cmms-profile small {
   color: var(--cmms-slate-500);
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-user-menu-wrap {
@@ -619,7 +619,7 @@
   place-items: center;
   background: #e2f1fb;
   color: var(--cmms-blue-700);
-  font-size: 12px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
 }
 
@@ -635,13 +635,13 @@
 
 .cmms-user-menu-summary strong {
   color: var(--cmms-navy-950);
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-user-menu-summary small {
   margin-top: 2px;
   color: var(--cmms-slate-500);
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-user-menu > button {
@@ -666,13 +666,13 @@
 }
 
 .cmms-user-menu > button strong {
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-user-menu > button small {
   margin-top: 2px;
   color: #7c8b9b;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-user-menu > button.danger {
@@ -695,7 +695,7 @@
   border-bottom: 1px solid #d5e2ec;
   background: #eef7fc;
   color: #5a7188;
-  font-size: 9px;
+  font-size: var(--ui-text-small);
   text-align: center;
 }
 
@@ -703,7 +703,7 @@
   margin-right: 8px;
   color: var(--cmms-blue-700);
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -749,7 +749,7 @@
   gap: 7px;
   color: #67d7ee;
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
   letter-spacing: 0.13em;
 }
@@ -772,7 +772,7 @@
 .cmms-action-banner p {
   margin: 0;
   color: #b2cee7;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-primary-button,
@@ -785,7 +785,7 @@
   justify-content: center;
   gap: 7px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
   font-weight: 650;
   transition: box-shadow 150ms ease, transform 150ms ease, background 150ms ease;
 }
@@ -894,7 +894,7 @@
 
 .cmms-kpi span {
   color: var(--cmms-slate-500);
-  font-size: 9px;
+  font-size: var(--ui-text-small);
   font-weight: 600;
 }
 
@@ -907,7 +907,7 @@
 
 .cmms-kpi small {
   color: #8a99a9;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   line-height: 1.45;
 }
 
@@ -944,14 +944,14 @@
   display: block;
   color: #1681c5;
   font-family: Arial, sans-serif;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
   letter-spacing: 0.12em;
 }
 
 .cmms-panel-heading h3 {
   margin: 3px 0 0;
-  font-size: 14px;
+  font-size: var(--ui-text-body);
   font-weight: 650;
 }
 
@@ -964,7 +964,7 @@
   background: transparent;
   color: var(--cmms-blue-700);
   cursor: pointer;
-  font-size: 9px;
+  font-size: var(--ui-text-small);
   font-weight: 650;
 }
 
@@ -982,7 +982,7 @@
 .cmms-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-table th {
@@ -990,7 +990,7 @@
   border-bottom: 1px solid var(--cmms-line);
   background: #f8fafc;
   color: #7c8b9d;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-weight: 650;
   letter-spacing: 0.02em;
   text-align: left;
@@ -1037,7 +1037,7 @@
   max-width: 235px;
   overflow: hidden;
   color: var(--cmms-navy-950);
-  font-size: 9px;
+  font-size: var(--ui-text-small);
   font-weight: 630;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1047,7 +1047,7 @@
   margin-top: 2px;
   color: #8797a9;
   font-family: Arial, sans-serif;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-work-type {
@@ -1059,7 +1059,7 @@
   place-items: center;
   flex: 0 0 auto;
   font-family: Arial, sans-serif;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
 }
 
@@ -1086,7 +1086,7 @@
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-weight: 650;
 }
 
@@ -1144,7 +1144,7 @@
 .cmms-cell-main {
   color: var(--cmms-navy-950);
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-cell-sub {
@@ -1152,7 +1152,7 @@
   margin-top: 2px;
   overflow: hidden;
   color: #8190a1;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   text-overflow: ellipsis;
 }
 
@@ -1171,7 +1171,7 @@
   place-items: center;
   background: #e7f1f8;
   color: #176fae;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-style: normal;
   font-weight: 700;
 }
@@ -1205,11 +1205,11 @@
 
 .cmms-empty strong {
   color: var(--cmms-navy-950);
-  font-size: 13px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-empty span {
-  font-size: 10px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-alert-list {
@@ -1259,20 +1259,20 @@
 }
 
 .cmms-alert-item strong {
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-alert-item p {
   margin: 2px 0;
   color: #78889a;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
   line-height: 1.5;
   line-height: 1.4;
 }
 
 .cmms-alert-item small {
   color: #9aa6b4;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-alert-item b {
@@ -1281,7 +1281,7 @@
   background: #f2f6f9;
   color: var(--cmms-navy-950);
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   white-space: nowrap;
 }
 
@@ -1322,14 +1322,14 @@
 .cmms-mini-schedule time strong {
   color: var(--cmms-blue-700);
   font-family: Arial, sans-serif;
-  font-size: 16px;
+  font-size: var(--ui-text-body);
   line-height: 1;
 }
 
 .cmms-mini-schedule time span {
   margin-top: 2px;
   color: #8694a5;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-mini-schedule p {
@@ -1344,7 +1344,7 @@
 
 .cmms-mini-schedule p strong {
   overflow: hidden;
-  font-size: 9px;
+  font-size: var(--ui-text-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1352,7 +1352,7 @@
 .cmms-mini-schedule p span {
   margin-top: 3px;
   color: #7c8b9d;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-mini-schedule em,
@@ -1361,7 +1361,7 @@
   border-radius: 999px;
   background: #eff3f6;
   color: #6c7988;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-style: normal;
   white-space: nowrap;
 }
@@ -1422,7 +1422,7 @@
 
 .cmms-health-ring span {
   color: #8190a1;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-health-legend {
@@ -1437,7 +1437,7 @@
   grid-template-columns: 9px 1fr auto;
   gap: 7px;
   align-items: center;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-health-legend p i,
@@ -1474,7 +1474,7 @@
   display: block;
   margin-top: 9px;
   color: #9aa6b3;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   line-height: 1.45;
 }
 
@@ -1510,7 +1510,7 @@
   background: transparent;
   color: #6e7e90;
   cursor: pointer;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-tabs button span {
@@ -1522,7 +1522,7 @@
   place-items: center;
   background: #eef2f5;
   font-family: Arial, sans-serif;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-tabs button.active {
@@ -1559,7 +1559,7 @@
   border: 0;
   outline: 0;
   color: var(--cmms-navy-950);
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-select {
@@ -1570,11 +1570,11 @@
   outline: 0;
   background: white;
   color: var(--cmms-slate-700);
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-page-panel > .cmms-table-wrap .cmms-table {
-  font-size: 10px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-page-panel > .cmms-table-wrap .cmms-table th {
@@ -1587,7 +1587,7 @@
 
 .cmms-page-panel > .cmms-table-wrap .cmms-order-title strong {
   max-width: 320px;
-  font-size: 10px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-pm-layout {
@@ -1641,7 +1641,7 @@
 
 .cmms-progress-ring span {
   color: var(--cmms-slate-500);
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-pm-metrics {
@@ -1672,7 +1672,7 @@
 
 .cmms-pm-metrics span {
   color: var(--cmms-slate-500);
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-pm-list {
@@ -1720,7 +1720,7 @@
 .cmms-pm-list time span,
 .cmms-pm-list time small {
   color: #8190a1;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-pm-item-main {
@@ -1730,14 +1730,14 @@
 .cmms-pm-item-main > span {
   color: #1681c5;
   font-family: Arial, sans-serif;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
 }
 
 .cmms-pm-item-main h4 {
   margin: 3px 0 4px;
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--ui-text-small);
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1749,7 +1749,7 @@
   align-items: center;
   gap: 5px;
   color: #7b8b9c;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-pm-item-meta span,
@@ -1759,12 +1759,12 @@
 
 .cmms-pm-item-meta span {
   color: #8795a5;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-pm-item-meta strong {
   margin-top: 3px;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-pm-list article > em.pending {
@@ -1796,7 +1796,7 @@
   align-items: center;
   gap: 6px;
   color: var(--cmms-slate-500);
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-asset-stats strong {
@@ -1851,7 +1851,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-weight: 650;
 }
 
@@ -1879,13 +1879,13 @@
 
 .cmms-health-badge.large {
   padding: 6px 10px;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-asset-id {
   color: #177dbf;
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
 }
 
@@ -1893,7 +1893,7 @@
   min-height: 40px;
   margin: 3px 0 8px;
   font-family: Arial, "Anuphan Variable", sans-serif;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   line-height: 1.35;
 }
 
@@ -1903,13 +1903,13 @@
   align-items: center;
   gap: 5px;
   color: var(--cmms-slate-700);
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-asset-card > small {
   display: block;
   color: #8b98a8;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-asset-card-bottom {
@@ -1935,14 +1935,14 @@
 
 .cmms-asset-card-bottom small {
   color: #8a98a8;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-asset-card-bottom strong {
   margin-top: 2px;
   overflow: hidden;
   color: var(--cmms-navy-950);
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1976,19 +1976,19 @@
 .cmms-site-card-top small {
   color: #8998a8;
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   letter-spacing: 0.04em;
 }
 
 .cmms-site-card h3 {
   margin: 15px 0 3px;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-site-card > p {
   margin: 0;
   color: #7e8d9e;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   line-height: 1.5;
 }
 
@@ -2021,13 +2021,13 @@
 
 .cmms-site-metrics small {
   color: #8795a5;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-site-metrics strong {
   margin-top: 3px;
   font-family: Arial, sans-serif;
-  font-size: 15px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-site-footer {
@@ -2038,7 +2038,7 @@
 
 .cmms-site-footer span {
   color: #8290a0;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-site-footer button {
@@ -2050,7 +2050,7 @@
   background: transparent;
   color: var(--cmms-blue-700);
   cursor: pointer;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   font-weight: 650;
 }
 
@@ -2098,7 +2098,7 @@
 
 .cmms-alert-summary small {
   color: #7d8c9d;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-alert-summary > p {
@@ -2107,7 +2107,7 @@
   align-items: center;
   gap: 8px;
   color: #708195;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-event-list {
@@ -2160,36 +2160,36 @@
 .cmms-event-main > div span {
   color: #137dc2;
   font-family: Arial, sans-serif;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
 }
 
 .cmms-event-main > div small {
   color: #98a4b1;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-event-main h3 {
   margin: 4px 0 2px;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-event-main p {
   margin: 0 0 4px;
   color: #738396;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   line-height: 1.55;
 }
 
 .cmms-event-main > small {
   color: #8b99a8;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-event-value {
   color: var(--cmms-navy-950);
   font-family: Arial, sans-serif;
-  font-size: 15px;
+  font-size: var(--ui-text-body);
   text-align: center;
 }
 
@@ -2204,7 +2204,7 @@
   align-items: center;
   gap: 5px;
   color: var(--cmms-green-500);
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-report-grid {
@@ -2253,7 +2253,7 @@
   left: 50%;
   color: #42617e;
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   transform: translateX(-50%);
 }
 
@@ -2261,7 +2261,7 @@
   position: absolute;
   top: calc(100% + 7px);
   color: #7c8b9b;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-sla-score {
@@ -2286,7 +2286,7 @@
 
 .cmms-sla-score span {
   color: #7a899a;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-sla-panel dl {
@@ -2298,7 +2298,7 @@
   border-bottom: 1px solid #e7edf2;
   display: flex;
   justify-content: space-between;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-sla-panel dt {
@@ -2333,7 +2333,7 @@
   background: #eef3f7;
   color: #6f8092;
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-risk-list p {
@@ -2346,17 +2346,17 @@
 }
 
 .cmms-risk-list p strong {
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-risk-list p small {
   margin-top: 2px;
   color: #8392a2;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-risk-list em {
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   font-style: normal;
   font-weight: 650;
 }
@@ -2371,7 +2371,7 @@
 
 .cmms-risk-list b {
   color: #68798b;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
   text-align: right;
 }
 
@@ -2388,13 +2388,13 @@
 .cmms-report-note h3 {
   margin: 12px 0 4px;
   color: var(--cmms-navy-950);
-  font-size: 14px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-report-note p {
   margin: 0;
   color: #708194;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   line-height: 1.55;
   line-height: 1.7;
 }
@@ -2444,7 +2444,7 @@
 .cmms-drawer-eyebrow {
   color: #1681c5;
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -2460,7 +2460,7 @@
   display: block;
   color: #1980bd;
   font-family: Arial, sans-serif;
-  font-size: 9px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
 }
 
@@ -2486,13 +2486,13 @@
 
 .cmms-detail-list dt {
   color: #8090a1;
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-detail-list dd {
   margin: 0;
   color: var(--cmms-navy-950);
-  font-size: 10px;
+  font-size: var(--ui-text-small);
   font-weight: 550;
 }
 
@@ -2500,7 +2500,7 @@
   display: block;
   margin-top: 3px;
   color: #8392a3;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   font-weight: 400;
 }
 
@@ -2510,7 +2510,7 @@
 
 .cmms-drawer-section h3 {
   margin: 0 0 12px;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-timeline {
@@ -2556,13 +2556,13 @@
 }
 
 .cmms-timeline strong {
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-timeline small {
   margin-top: 2px;
   color: #8392a3;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-order-drawer-id {
@@ -2574,7 +2574,7 @@
 
 .cmms-order-drawer-id strong {
   font-family: Arial, sans-serif;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-drawer.order > h2 {
@@ -2599,7 +2599,7 @@
   margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-progress-block > div span {
@@ -2688,7 +2688,7 @@
 .cmms-user-profile-heading span {
   color: #1681c5;
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -2702,7 +2702,7 @@
 .cmms-user-profile-heading p {
   margin: 0;
   color: var(--cmms-slate-500);
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   line-height: 1.5;
 }
 
@@ -2738,13 +2738,13 @@
 
 .cmms-user-profile-details dt {
   color: #7d8d9e;
-  font-size: 10px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-user-profile-details dd {
   margin: 0;
   color: var(--cmms-navy-950);
-  font-size: 11px;
+  font-size: var(--ui-text-small);
   font-weight: 600;
 }
 
@@ -2782,7 +2782,7 @@
   background: #fff4f4;
   color: #b63030;
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--ui-text-small);
   font-weight: 650;
 }
 
@@ -2797,7 +2797,7 @@
 .cmms-modal-heading span {
   color: #1681c5;
   font-family: Arial, sans-serif;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -2810,7 +2810,7 @@
 .cmms-modal-heading p {
   margin: 0;
   color: #7a8a9c;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   line-height: 1.5;
 }
 
@@ -2822,7 +2822,7 @@
   display: block;
   margin-bottom: 14px;
   color: var(--cmms-navy-950);
-  font-size: 9px;
+  font-size: var(--ui-text-small);
   font-weight: 600;
 }
 
@@ -2837,7 +2837,7 @@
   outline: 0;
   background: #fbfcfd;
   color: var(--cmms-navy-950);
-  font-size: 10px;
+  font-size: var(--ui-text-small);
   font-weight: 400;
 }
 
@@ -2888,17 +2888,17 @@
 
 .cmms-selected-asset strong {
   color: var(--cmms-navy-950);
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-selected-asset span {
   color: #7d8d9f;
-  font-size: 7px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-selected-asset em {
   color: #b4730c;
-  font-size: 8px;
+  font-size: var(--ui-text-small);
   font-style: normal;
 }
 
@@ -2924,7 +2924,7 @@
   background: #092c4c;
   color: white;
   box-shadow: 0 14px 36px rgba(4, 23, 43, 0.28);
-  font-size: 10px;
+  font-size: var(--ui-text-small);
   animation: cmms-toast-in 180ms ease-out;
 }
 
@@ -3116,7 +3116,7 @@
 
   .cmms-demo-note {
     padding: 7px 14px;
-    font-size: 8px;
+    font-size: var(--ui-text-small);
   }
 
   .cmms-content {
@@ -3134,7 +3134,7 @@
   }
 
   .cmms-action-banner p {
-    font-size: 10px;
+    font-size: var(--ui-text-small);
   }
 
   .cmms-action-banner > .cmms-primary-button {
@@ -3330,13 +3330,13 @@
   .cmms-active-jobsite small,
   .cmms-demo-note,
   .cmms-demo-note span {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-cloud-status strong,
   .cmms-active-jobsite strong,
   .cmms-sidebar-bottom > .cmms-back-to-sites {
-    font-size: 16px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-topbar-title h1,
@@ -3350,13 +3350,13 @@
   .cmms-profile strong,
   .cmms-primary-button,
   .cmms-secondary-button {
-    font-size: 16px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-profile small,
   .cmms-global-search kbd,
   .cmms-live-label {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-user-menu {
@@ -3367,7 +3367,7 @@
   .cmms-user-menu-summary strong,
   .cmms-user-menu > button strong,
   .cmms-user-profile-details dd {
-    font-size: 16px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-user-menu-summary small,
@@ -3375,7 +3375,7 @@
   .cmms-user-profile-details dt,
   .cmms-user-profile-heading p,
   .cmms-user-profile-logout {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-user-profile-modal {
@@ -3401,7 +3401,7 @@
   }
 
   .cmms-kpi span {
-    font-size: 15px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-kpi strong {
@@ -3409,12 +3409,12 @@
   }
 
   .cmms-kpi small {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
     line-height: 1.55;
   }
 
   .cmms-panel-heading span {
-    font-size: 13px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-panel-heading h3 {
@@ -3426,16 +3426,16 @@
   .cmms-inline-search input,
   .cmms-select,
   .cmms-empty span {
-    font-size: 15px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-table,
   .cmms-page-panel > .cmms-table-wrap .cmms-table {
-    font-size: 15px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-table th {
-    font-size: 13px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-order-title strong,
@@ -3449,7 +3449,7 @@
   .cmms-modal select,
   .cmms-modal textarea,
   .cmms-selected-asset strong {
-    font-size: 15px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-order-title small,
@@ -3465,7 +3465,7 @@
   .cmms-risk-list p small,
   .cmms-risk-list em,
   .cmms-risk-list b {
-    font-size: 13px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-cell-main,
@@ -3474,7 +3474,7 @@
   .cmms-alert-item b,
   .cmms-asset-stats span,
   .cmms-sla-panel dl div {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-empty strong,
@@ -3514,7 +3514,7 @@
   .cmms-bar-chart span,
   .cmms-bar-chart small,
   .cmms-sla-score span {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-pm-layout .cmms-panel-heading h3 {
@@ -3529,7 +3529,7 @@
 
   .cmms-pm-layout .cmms-pm-item-main p,
   .cmms-pm-layout .cmms-pm-item-meta strong {
-    font-size: 16px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-pm-layout .cmms-panel-heading span,
@@ -3539,7 +3539,7 @@
   .cmms-pm-layout .cmms-pm-item-main > span,
   .cmms-pm-layout .cmms-pm-item-meta span,
   .cmms-pm-layout .cmms-pm-list article > em {
-    font-size: 15px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-pm-layout .cmms-pm-list article {
@@ -3549,7 +3549,7 @@
 
 /* Dashboard-specific type scale for faster operational scanning. */
 .cmms-dashboard-page .cmms-live-label {
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-dashboard-page .cmms-action-banner h2 {
@@ -3558,12 +3558,12 @@
 
 .cmms-dashboard-page .cmms-action-banner p,
 .cmms-dashboard-page .cmms-action-banner > .cmms-primary-button {
-  font-size: 14px;
+  font-size: var(--ui-text-body);
   line-height: 1.55;
 }
 
 .cmms-dashboard-page .cmms-kpi span {
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-dashboard-page .cmms-kpi strong {
@@ -3571,12 +3571,12 @@
 }
 
 .cmms-dashboard-page .cmms-kpi small {
-  font-size: 11px;
+  font-size: var(--ui-text-small);
   line-height: 1.5;
 }
 
 .cmms-dashboard-page .cmms-panel-heading span {
-  font-size: 10px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-dashboard-page .cmms-panel-heading h3 {
@@ -3584,19 +3584,19 @@
 }
 
 .cmms-dashboard-page .cmms-panel-heading > button {
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-dashboard-page .cmms-table {
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-dashboard-page .cmms-table th {
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-dashboard-page .cmms-order-title strong {
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-dashboard-page .cmms-order-title small,
@@ -3605,36 +3605,36 @@
 .cmms-dashboard-page .cmms-status,
 .cmms-dashboard-page .cmms-priority,
 .cmms-dashboard-page .cmms-assignee i {
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-dashboard-page .cmms-cell-main,
 .cmms-dashboard-page .cmms-assignee,
 .cmms-dashboard-page .cmms-due {
-  font-size: 10px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-dashboard-page .cmms-alert-item strong,
 .cmms-dashboard-page .cmms-mini-schedule p strong {
-  font-size: 14px;
+  font-size: var(--ui-text-body);
 }
 
 .cmms-dashboard-page .cmms-alert-item p,
 .cmms-dashboard-page .cmms-mini-schedule p span {
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   line-height: 1.5;
 }
 
 .cmms-dashboard-page .cmms-alert-item small,
 .cmms-dashboard-page .cmms-mini-schedule time span,
 .cmms-dashboard-page .cmms-mini-schedule em {
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 .cmms-dashboard-page .cmms-alert-item b,
 .cmms-dashboard-page .cmms-health-ring span,
 .cmms-dashboard-page .cmms-health-legend p {
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   line-height: 1.5;
 }
 
@@ -3643,7 +3643,7 @@
 }
 
 .cmms-dashboard-page .cmms-health-legend > small {
-  font-size: 9px;
+  font-size: var(--ui-text-small);
 }
 
 @media (max-width: 680px) {
@@ -3653,12 +3653,12 @@
 
   .cmms-dashboard-page .cmms-action-banner p,
   .cmms-dashboard-page .cmms-action-banner > .cmms-primary-button {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-dashboard-page .cmms-kpi span,
   .cmms-dashboard-page .cmms-panel-heading > button {
-    font-size: 11px;
+    font-size: var(--ui-text-small);
   }
 
   .cmms-dashboard-page .cmms-kpi strong {
@@ -3668,13 +3668,13 @@
   .cmms-dashboard-page .cmms-kpi small,
   .cmms-dashboard-page .cmms-alert-item p,
   .cmms-dashboard-page .cmms-mini-schedule p span {
-    font-size: 12px;
+    font-size: var(--ui-text-small);
   }
 }
 
 @media (min-width: 1900px) {
   .cmms-dashboard-page .cmms-live-label {
-    font-size: 16px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-dashboard-page .cmms-action-banner h2 {
@@ -3695,12 +3695,12 @@
   }
 
   .cmms-dashboard-page .cmms-kpi small {
-    font-size: 16px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-dashboard-page .cmms-panel-heading span,
   .cmms-dashboard-page .cmms-table th {
-    font-size: 15px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-dashboard-page .cmms-panel-heading h3 {
@@ -3729,14 +3729,14 @@
   .cmms-dashboard-page .cmms-health-ring span,
   .cmms-dashboard-page .cmms-health-legend p,
   .cmms-dashboard-page .cmms-health-legend > small {
-    font-size: 15px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-dashboard-page .cmms-cell-main,
   .cmms-dashboard-page .cmms-assignee,
   .cmms-dashboard-page .cmms-due,
   .cmms-dashboard-page .cmms-alert-item b {
-    font-size: 16px;
+    font-size: var(--ui-text-body);
   }
 
   .cmms-dashboard-page .cmms-health-ring strong {

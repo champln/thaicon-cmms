@@ -1,0 +1,8 @@
+.asset-qr { border-top: 1px solid #dbe4ee; margin-top: 24px; padding-top: 20px; }
+.asset-qr h3 { font-size: 22px; }
+.asset-qr p, .asset-qr label, .asset-qr input { font-size: 16px; line-height: 1.65; }
+.asset-qr img { display: block; max-width: 100%; height: auto; margin: 12px auto; }
+.asset-qr label { display: grid; gap: 8px; }
+.asset-qr input { width: 100%; min-width: 0; box-sizing: border-box; padding: 10px; }
+.asset-qr-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+.asset-qr-actions > * { min-height: 44px; text-decoration: none; display: inline-flex; align-items: center; }

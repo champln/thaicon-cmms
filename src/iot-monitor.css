@@ -25,7 +25,7 @@
 .iot-panel-heading > div > span {
   color: #1681c5;
   font-family: Arial, sans-serif;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -38,7 +38,7 @@
 .iot-toolbar p {
   margin: 2px 0 0;
   color: #738497;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
 }
 
 .iot-toolbar-actions {
@@ -53,7 +53,7 @@
   border-radius: 7px;
   background: #fff;
   color: #62768a;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-toolbar-actions small {
@@ -114,7 +114,7 @@
 
 .iot-kpi > span {
   color: #697b8e;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
 }
 
 .iot-kpi > strong {
@@ -126,7 +126,7 @@
 
 .iot-kpi > small {
   color: #8594a4;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-kpi > em {
@@ -138,7 +138,7 @@
   background: #e8f6f0;
   color: #16895c;
   font-family: Arial, sans-serif;
-  font-size: 10px;
+  font-size: var(--ui-text-small);
   font-style: normal;
   font-weight: 700;
 }
@@ -184,7 +184,7 @@
 
 .iot-panel-heading > small {
   color: #8291a1;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-filter-group {
@@ -201,7 +201,7 @@
   background: #fff;
   color: #6d7e90;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-filter-group button.active {
@@ -226,7 +226,7 @@
   min-height: 39px;
   border-bottom: 1px solid #e8edf1;
   color: #8a98a7;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-site-row {
@@ -278,7 +278,7 @@
 .iot-site-name strong {
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   overflow: hidden;
 }
 
@@ -286,18 +286,18 @@
 .iot-site-cell small {
   margin-top: 2px;
   color: #8a98a7;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-site-cell strong {
   font-family: Arial, sans-serif;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
 }
 
 .iot-alarm-count {
   color: #788797;
   font-family: Arial, sans-serif;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-alarm-count.has-alarm {
@@ -335,18 +335,18 @@
 }
 
 .iot-live-heading strong {
-  font-size: 16px;
+  font-size: var(--ui-text-body);
 }
 
 .iot-live-heading span {
   color: #7c8c9c;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-health-badge {
   padding: 5px 9px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
   font-style: normal;
   font-weight: 650;
   white-space: nowrap;
@@ -377,9 +377,9 @@
   display: block;
 }
 
-.iot-live-metrics span { color: #8291a1; font-size: 11px; }
+.iot-live-metrics span { color: #8291a1; font-size: var(--ui-text-small); }
 .iot-live-metrics strong { margin: 3px 0 1px; font-family: Arial, sans-serif; font-size: 20px; }
-.iot-live-metrics small { color: #1b8a62; font-size: 10px; }
+.iot-live-metrics small { color: #1b8a62; font-size: var(--ui-text-small); }
 
 .iot-signal-block {
   padding: 13px;
@@ -391,7 +391,7 @@
 .iot-signal-block > div:first-child {
   justify-content: space-between;
   color: #687a8d;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-signal-block > div:first-child small {
@@ -420,7 +420,7 @@
   gap: 10px;
   display: flex;
   color: #7e8e9e;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-assets-list,
@@ -456,7 +456,7 @@
   background: #e9f4fb;
   color: #1179be;
   font-family: Arial, sans-serif;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
 }
 
@@ -490,23 +490,23 @@
 .iot-asset-heading strong {
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
   overflow: hidden;
 }
 
 .iot-asset-heading p > span,
 .iot-asset-metric span {
   color: #8291a1;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-asset-metric strong {
   font-family: Arial, sans-serif;
-  font-size: 14px;
+  font-size: var(--ui-text-body);
 }
 
 .iot-asset-status {
-  font-size: 11px;
+  font-size: var(--ui-text-small);
   font-weight: 650;
 }
 
@@ -530,7 +530,7 @@
   place-items: center;
   display: grid;
   color: #8392a2;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
 }
 
 .iot-alarm-item {
@@ -567,24 +567,24 @@
 .iot-alarm-heading span {
   color: #1380c3;
   font-family: Arial, sans-serif;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
 }
 
 .iot-alarm-heading time {
   color: #8b99a8;
-  font-size: 10px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-alarm-item h4 {
   margin: 4px 0 2px;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
 }
 
 .iot-alarm-item p {
   margin: 0;
   color: #78889a;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-alarm-meta {
@@ -593,7 +593,7 @@
 
 .iot-alarm-meta strong {
   font-family: Arial, sans-serif;
-  font-size: 13px;
+  font-size: var(--ui-text-body);
 }
 
 .iot-alarm-meta > div {
@@ -609,7 +609,7 @@
   border-radius: 6px;
   background: #fff;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-alarm-meta button.primary {
@@ -620,7 +620,7 @@
 
 .iot-alarm-meta span {
   color: #158a60;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-drawer-backdrop {
@@ -651,7 +651,7 @@
 .iot-drawer-eyebrow {
   color: #1681c5;
   font-family: Arial, sans-serif;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
   font-weight: 700;
   letter-spacing: 0.13em;
 }
@@ -664,7 +664,7 @@
 .iot-drawer-top p {
   margin: 0;
   color: #7b8b9b;
-  font-size: 12px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-drawer-top button {
@@ -693,9 +693,9 @@
   display: block;
 }
 
-.iot-current-reading > span { color: #748597; font-size: 12px; }
+.iot-current-reading > span { color: #748597; font-size: var(--ui-text-small); }
 .iot-current-reading > strong { margin: 3px 0; font-family: Arial, sans-serif; font-size: 32px; }
-.iot-current-reading > small { color: #16895f; font-size: 11px; }
+.iot-current-reading > small { color: #16895f; font-size: var(--ui-text-small); }
 .iot-current-reading .iot-health-badge { position: absolute; top: 16px; right: 16px; }
 
 .iot-chart-card {
@@ -720,7 +720,7 @@
   border-radius: 5px;
   background: #fff;
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--ui-text-small);
 }
 
 .iot-range-tabs button.active {
@@ -749,8 +749,8 @@
   display: grid;
 }
 
-.iot-detail-list dt { color: #8090a1; font-size: 12px; }
-.iot-detail-list dd { margin: 0; font-size: 12px; font-weight: 600; }
+.iot-detail-list dt { color: #8090a1; font-size: var(--ui-text-small); }
+.iot-detail-list dd { margin: 0; font-size: var(--ui-text-small); font-weight: 600; }
 
 .iot-demo-note {
   margin-top: 16px;
@@ -758,7 +758,7 @@
   border-radius: 7px;
   background: #fff5e4;
   color: #93621d;
-  font-size: 11px;
+  font-size: var(--ui-text-small);
 }
 
 @media (max-width: 1180px) {
@@ -798,7 +798,7 @@
   .iot-toolbar p,
   .iot-panel-heading > div > span,
   .iot-panel-heading > small {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
   }
 
   .iot-toolbar h2 {
@@ -808,7 +808,7 @@
   .iot-toolbar-actions small,
   .iot-toolbar-actions button,
   .iot-filter-group button {
-    font-size: 15px;
+    font-size: var(--ui-text-body);
   }
 
   .iot-kpi {
@@ -817,7 +817,7 @@
   }
 
   .iot-kpi > span {
-    font-size: 15px;
+    font-size: var(--ui-text-body);
   }
 
   .iot-kpi > strong {
@@ -825,13 +825,13 @@
   }
 
   .iot-kpi > small {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
     line-height: 1.55;
   }
 
   .iot-kpi > em,
   .iot-range-tabs button {
-    font-size: 12px;
+    font-size: var(--ui-text-small);
   }
 
   .iot-panel-heading h3 {
@@ -862,7 +862,7 @@
   .iot-detail-list dt,
   .iot-detail-list dd,
   .iot-demo-note {
-    font-size: 14px;
+    font-size: var(--ui-text-body);
   }
 
   .iot-site-name strong,
@@ -875,7 +875,7 @@
   .iot-alarm-item h4,
   .iot-alarm-meta strong,
   .iot-chart-head strong {
-    font-size: 15px;
+    font-size: var(--ui-text-body);
   }
 
   .iot-live-metrics strong {

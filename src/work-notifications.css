@@ -1,0 +1,9 @@
+.notice-backdrop { position: fixed; inset: 0; background: #001a36a6; z-index: 150; display: flex; justify-content: flex-end; }
+.notice-dialog { background: white; width: min(520px,100%); height: 100dvh; overflow-y: auto; padding: 24px; box-sizing: border-box; color: #12365b; }
+.notice-dialog h2 { font-size: 26px; }
+.notice-dialog p, .notice-dialog span, .notice-dialog strong { font-size: 16px; line-height: 1.65; overflow-wrap: anywhere; }
+.notice-dialog ul { padding: 0; list-style: none; }
+.notice-dialog li { border-top: 1px solid #d2deea; padding: 20px 0; }
+.notice-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+.notice-dialog button { min-height: 44px; font-size: 16px; }
+.notice-dialog button:focus-visible { outline: 3px solid #0784bb; outline-offset: 3px; }

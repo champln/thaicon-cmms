@@ -1,0 +1,17 @@
+.technician-tasks { padding: 24px; margin-bottom: 24px; }
+.technician-tasks h2 { font-size: 24px; margin: 0 0 8px; }
+.technician-tasks p { font-size: 16px; line-height: 1.6; }
+.technician-task-filters { display: flex; flex-wrap: wrap; gap: 12px; }
+.technician-task-filters button { min-height: 48px; padding: 12px 16px; border: 1px solid #b6c9dc; border-radius: 10px; background: white; color: #12365b; font: inherit; cursor: pointer; }
+.technician-task-filters button[aria-pressed="true"] { background: #12365b; color: white; }
+.technician-task-filters strong { margin-left: 8px; }
+.technician-task-list { padding: 0; list-style: none; display: grid; gap: 12px; }
+.technician-task-list button { width: 100%; min-height: 64px; display: flex; justify-content: space-between; text-align: left; gap: 16px; padding: 16px; border: 1px solid #d2deea; border-radius: 10px; background: white; color: #12365b; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
+.technician-task-list button > span:first-child { display: grid; gap: 8px; }
+.technician-tasks button:focus-visible { outline: 3px solid #0784bb; outline-offset: 3px; }
+.technician-tasks button:hover { box-shadow: 0 0 0 1px #12365b; }
+@media(max-width:680px) {
+  .technician-tasks { padding: 16px; }
+  .technician-task-filters { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .technician-task-list button { flex-direction: column; font-size: 16px; }
+}

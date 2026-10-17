@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import CMMSApp from "./CMMSApp";
+import { parseAssetLink } from "./asset-link";
+import WebServerStatus from "./WebServerStatus";
+import DatabaseStatus from "./DatabaseStatus";
 import {
   authenticateDemoUser,
   demoUsers,
@@ -96,21 +99,17 @@ function LoginPage({
           <span><strong>ThaiCon</strong><small>MAINTENANCE CLOUD</small></span>
         </div>
         <div className="access-visual-copy">
-          <span>ระบบบริหารงานบำรุงรักษา</span>
-          <h1>จัดการงานบำรุงรักษา<br />แยกตามไซต์</h1>
+          <h1>ระบบติดตามงานซ่อมบำรุง</h1>
           <p>ติดตามใบงาน แผน PM เครื่องจักร และ Alarm ของแต่ละไซต์</p>
         </div>
-        <div className="access-security-note">
-          <i />
-          <span><strong>สิทธิ์การเข้าถึงตามไซต์</strong><small>แสดงเฉพาะไซต์ที่บัญชีเข้าถึงได้</small></span>
-        </div>
+        <div className="access-service-statuses"><WebServerStatus /><DatabaseStatus /></div>
       </section>
 
       <section className="access-panel">
         <div className="access-form-wrap">
           <span className="access-eyebrow">THAICON CMMS</span>
           <h2>เข้าสู่ระบบ</h2>
-          <p>เข้าสู่ระบบเพื่อใช้งาน CMMS</p>
+          <p>ใช้บัญชีที่ผู้ดูแลกำหนด หรือเลือกบัญชี Demo</p>
 
           <form onSubmit={submit}>
             <label>
@@ -155,7 +154,7 @@ function LoginPage({
           </div>
         </div>
         <small className="access-footer">
-          {useSupabase ? "SUPABASE AUTHENTICATION • DEMO AVAILABLE" : "ระบบทดสอบ • ข้อมูลจำลอง"}
+          {useSupabase ? "บัญชีออนไลน์ / บัญชี Demo" : "ระบบทดสอบ • ข้อมูลจำลอง"}
         </small>
       </section>
     </main>
@@ -248,7 +247,12 @@ export default function App() {
         : [],
     [masterData, onlineMode, supabaseSites, user],
   );
-  const selectedSite = allowedSites.find((site) => site.id === jobsiteId) ?? null;
+  const [assetTarget, setAssetTarget] = useState(() => parseAssetLink(window.location.hash));
+  const dismissAssetTarget = () => {
+    setAssetTarget(null);
+    if (window.location.hash.startsWith("#asset?")) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  };
+  const selectedSite = allowedSites.find((site) => site.id === (assetTarget?.siteId ?? jobsiteId)) ?? null;
 
   const hydrateSupabaseMasterData = async (access: SupabaseAccess) => {
     const attempt = ++masterAttempt.current;
@@ -301,7 +305,7 @@ export default function App() {
       await hydrateSupabaseMasterData(access);
     } catch (error) {
       if (attempt !== masterAttempt.current) return;
-      setAuthError(error instanceof SupabaseAccessError ? error.userMessage : "โหลดทะเบียนข้อมูลไม่สำเร็จ กรุณาลองใหม่");
+      setAuthError(error instanceof SupabaseAccessError ? error.userMessage : "โหลดข้อมูลไซต์และเครื่องจักรไม่สำเร็จ ลองใหม่อีกครั้ง");
       setMasterLoad("error");
     }
   };
@@ -462,6 +466,14 @@ export default function App() {
     );
   }
 
+  if (assetTarget && (!selectedSite || user.role === "engineer")) {
+    return <main className="access-loading">
+      <strong>เปิดเครื่องจักรไม่ได้</strong>
+      <p>ไม่พบไซต์หรือบัญชีนี้ไม่มีสิทธิ์ดูเครื่องจักร กรุณาติดต่อผู้ดูแล</p>
+      <button type="button" className="access-submit" onClick={dismissAssetTarget}>กลับสู่ระบบ</button>
+      <button type="button" className="access-submit" onClick={() => void logout()}>เปลี่ยนบัญชี</button>
+    </main>;
+  }
   if (!selectedSite) {
     return (
       <JobsiteSelector
@@ -480,8 +492,9 @@ export default function App() {
       allowedJobsites={allowedSites}
       currentUser={user}
       masterData={masterData}
+      initialAssetId={assetTarget?.assetId}
       onMasterDataChange={setMasterData}
-      onChangeJobsite={() => setJobsiteId(null)}
+      onChangeJobsite={() => { dismissAssetTarget(); setJobsiteId(null); }}
       onLogout={() => void logout()}
       onlineMode={onlineMode}
     />
