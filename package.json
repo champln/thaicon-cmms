@@ -11,9 +11,6 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:db": "supabase test db",
-    "test:tor-db": "node scripts/test-tor-db.mjs",
-    "test:tor-upgrade": "node scripts/test-tor-upgrade.cjs",
     "preview": "vite preview"
   },
   "dependencies": {

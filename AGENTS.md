@@ -1,5 +1,15 @@
 # AGENTS.md
 
+## Docker retirement — 2026-10-16 (supersedes local Docker instructions below)
+
+User requested removing ThaiCon Docker tooling after checking hostc independence. Demo uses Vite static preview on 127.0.0.1:15190 with dist-hostc and blank Supabase build variables; it has no Docker dependency. Removed 13 Docker startup/integration/concurrency scripts and npm test:db/test:tor-db/test:tor-upgrade commands. SQL fixtures/checks, all migrations, cloud Edge Functions and online adapters remain for future hosted database verification. Historical Docker evidence below records past tests, not commands still available or permission to recreate that stack.
+
+Removed only eight exact ThaiCon containers (seven *_thaicon-tor-local services and thaicon-tor-check-20261006). Database/Storage volumes and shared images retained for recovery; unrelated containers untouched. Recovery archive outside Git: ../../outputs/docker-retired-20261016 includes original 13 scripts (including pre-existing uncommitted notification harness changes), original package.json and the isolated tor-supabase-local directory moved out of its active location. Archive may contain local generated configuration: keep it private and out of Git. Historical test results remain valid as past evidence; fresh real database/JWT tests require a prepared target and replacement tooling.
+
+Keep Demo tests on isolated browser contexts. hostc URLs are temporary and change on restart; do not reuse old links without verification. Keep computer awake and preview/tunnel processes running. No commit/push or Production database changes authorized by cleanup.
+
+Validation after removal: typecheck, 397 tests/53 files, standard build and explicit blank-Supabase Demo build passed (existing >500KB warning remains). Isolated fresh Chrome checks passed both local15190 and public https://psupxzvasmi9.hostc.app: Engineer Demo login/site entry, notification receipt saved across reload, order drawer, Escape and 390/768/1440 layouts. No ThaiCon containers remain; no Docker references in active scripts. This proves selected Demo paths work without Docker, not real database persistence. Preview/tunnel launched hidden with logs in Windows TEMP named thaicon-preview-20261016 and thaicon-hostc-20261016; restart as needed, session/process IDs are not durable.
+
 ## Local commit and test handoff — 2026-10-08
 
 Human explicitly authorized a local commit of accumulated development work and running the app for testing. Push/deployment was not requested. The commit includes the previously accumulated TOR implementation, report families, UAT/guide, tests and22 migration files; use git log for its resulting hash. Historical checkpoint HEAD/pending counts below describe their original moments, not the post-commit worktree.

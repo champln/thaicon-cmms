@@ -1,5 +1,20 @@
 # ThaiCon CMMS
 
+## การรันทดสอบปัจจุบัน (2026-10-16)
+
+Demo รันด้วย Node.js/Vite และเปิดให้ทดสอบผ่าน hostc ได้โดยไม่ใช้ Docker ข้อมูลอยู่ในเบราว์เซอร์ของแต่ละคน ไม่ซิงก์ข้ามเครื่อง ส่วนระบบออนไลน์ยังใช้ Supabase ตามเดิม
+
+นำสคริปต์เริ่ม Docker และ integration tests ที่ผูกกับ Docker ออกจากโปรเจกต์แล้ว คำสั่ง `test:db`, `test:tor-db`, `test:tor-upgrade` ในบันทึกเก่าด้านล่างจึงใช้ไม่ได้ เก็บสำเนาไว้นอก Git ที่ `../../outputs/docker-retired-20261016` พร้อม configuration local เดิม; Docker volumes ยังเก็บไว้กู้คืน ฐานข้อมูลจริงและ migrations ไม่ได้ถูกลบ
+
+สำหรับทดสอบผ่านอินเทอร์เน็ต ให้ build Demo โดยกำหนด `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_ANON_KEY` เป็นค่าว่าง และ `VITE_BASE_PATH=/` เฉพาะโปรเซส build ไปยัง `dist-hostc` แล้วรัน:
+
+```bash
+npm run preview -- --outDir dist-hostc --host 127.0.0.1 --port 15190 --strictPort
+npx --yes hostc@2.0.6 127.0.0.1:15190
+```
+
+ใช้ URL ที่ hostc แสดงล่าสุด และเปิดทั้งสองโปรเซสไว้ระหว่างทดสอบ การเปลี่ยน URL ทำให้ข้อมูล Demo ที่เก็บใต้ URL เดิมไม่ตามมา บันทึก checkpoint ด้านล่างเป็นประวัติการพัฒนา ไม่ใช่สถานะ deployment ปัจจุบัน
+
 ### Local TOR checkpoint (2026-10-06; not deployed)
 
 Latest: scoped maintenance/Alarm realtime now wired locally, **21 total /15 unpublished migrations**, newest0014. Atomic scoped SQL snapshots include actual cycles/photo metadata/positive plan tombstones; actual actor role/site rechecked after private-photo preparation. Maintenance live refresh requires every owning command gate ON, preserving legacy dirty data; Alarm independently gated. Serialized invalidation/catch-up/poll/focus refresh, monotonic versions, retained forms/inline retry and latched authorization denial verified. User open report detail/export follows latest confirmed version; staff pending review key is retained and stale export gated. **288 units**, fresh21/populated-six upgrade, actual-JWT transport and PM browser regression PASS. Broad realtime stress cases and report/master-pagination/load-state work remain; this is not complete TOR/UAT acceptance. Gates remain OFF, no Git/deploy/Production writes. Latest AGENTS.md supersedes the historical notes below.
@@ -59,7 +74,6 @@ npm run dev
 ```bash
 npm run typecheck
 npm test
-npm run test:db # ต้องมี Supabase local stack
 npm run build
 ```
 
