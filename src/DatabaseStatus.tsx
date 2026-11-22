@@ -18,8 +18,9 @@ export default function DatabaseStatus() {
       active = controller;
       const timer = window.setTimeout(() => controller.abort(), 5000);
       try {
-        // HEAD + limit 0: no site records or counts returned; existing RLS still applies.
-        const result = await client!.from("jobsites").select("id", { head: true }).limit(0).abortSignal(controller.signal);
+        // Executes SELECT true in PostgreSQL, including before login. No table
+        // reads, row counts, credentials or elevated role are needed.
+        const result = await client!.rpc("database_health").abortSignal(controller.signal);
         if (!disposed && request === sequence) setStatus(classifyDatabaseProbe(result));
       } catch {
         if (!disposed && request === sequence) setStatus("offline");
@@ -43,7 +44,8 @@ export default function DatabaseStatus() {
     checking: ["กำลังตรวจฐานข้อมูล...", "ตรวจการตอบกลับผ่าน Supabase"],
     online: ["ฐานข้อมูลตอบกลับได้", "ตรวจทุก 30 วินาที • ไม่ยืนยันสิทธิ์บันทึก"],
     offline: ["ตรวจการเชื่อมต่อฐานข้อมูลไม่สำเร็จ", "ตรวจเครือข่ายหรือแจ้งผู้ดูแล"],
-    restricted: ["ยังยืนยันสถานะฐานข้อมูลไม่ได้", "ไม่มีสิทธิ์ตรวจสอบ • ไม่ได้หมายถึงฐานข้อมูลล่ม"],
+    restricted: ["ยังยืนยันสถานะฐานข้อมูลไม่ได้", "จุดตรวจไม่อนุญาตให้เข้าถึง • แจ้งผู้ดูแล"],
+    unknown: ["ยังยืนยันสถานะฐานข้อมูลไม่ได้", "จุดตรวจยังไม่พร้อม • แจ้งผู้ดูแล"],
   };
   return <div className={`access-security-note access-server-status access-database-status ${status}`} role="status" aria-live="polite">
     <i aria-hidden="true" /><span><strong>{labels[status][0]}</strong><small>{labels[status][1]}</small></span>

@@ -9,3 +9,5 @@ dist-hostc/
 supabase/.temp/
 .codex-tmp
 ~$*.xlsx
+
+.vercel

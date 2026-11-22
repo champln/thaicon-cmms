@@ -1,3 +1,4 @@
+import {openGroupedSection} from './open-grouped-section.mjs';
 // Fresh Demo contexts only. No user browser state or Supabase writes.
 // Usage: node scripts/test-order-report-ui.mjs <playwright-module> <output-dir>
 import { pathToFileURL } from "node:url";
@@ -17,7 +18,7 @@ try {
   await page.getByPlaceholder("กรอกรหัสผ่าน").fill("demo123");
   await page.getByRole("button", { name: /^เข้าสู่ระบบ/ }).click();
   await page.getByRole("button", { name: /SITE-001/ }).click();
-  await page.locator("nav").getByRole("button", { name: "ใบงาน", exact: true }).click();
+  await openGroupedSection(page, "ใบงาน");
   await page.getByRole("button", { name: "สร้างใบงาน", exact: true }).click();
   const modal = page.locator(".cmms-modal");
   await modal.getByLabel("ชื่องาน", { exact: true }).fill("=REPORT-UI-LITERAL");

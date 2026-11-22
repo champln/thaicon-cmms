@@ -1,3 +1,4 @@
+import {openGroupedSection} from './open-grouped-section.mjs';
 // Fresh Demo browser only. No remote writes or customer browser storage.
 import { pathToFileURL } from "node:url";
 import { mkdir } from "node:fs/promises";
@@ -16,7 +17,7 @@ try {
   await page.getByPlaceholder("กรอกรหัสผ่าน").fill("demo123");
   await page.getByRole("button", { name: /^เข้าสู่ระบบ/ }).click();
   await page.getByRole("button", { name: /SITE-001/ }).click();
-  await page.locator("nav").getByRole("button", { name: "รายงาน", exact: true }).click();
+  await openGroupedSection(page, "รายงาน");
   await page.getByRole("heading", { name: "สรุป Plan เทียบ Actual", exact: true }).waitFor();
   await page.getByLabel("เดือน", { exact: true }).selectOption("10");
   assert.equal(await page.locator(".maint-report-kpis").getByText("ไม่ประเมิน", { exact: true }).count(), 1);
@@ -42,7 +43,7 @@ try {
   await delayedPage.getByPlaceholder("กรอกรหัสผ่าน").fill("demo123");
   await delayedPage.getByRole("button", { name: /^เข้าสู่ระบบ/ }).click();
   await delayedPage.getByRole("button", { name: /SITE-001/ }).click();
-  await delayedPage.locator("nav").getByRole("button", { name: "รายงาน", exact: true }).click();
+  await openGroupedSection(delayedPage, "รายงาน");
   let enter, release, downloads = 0;
   const entered = new Promise(resolve => { enter = resolve; }), held = new Promise(resolve => { release = resolve; });
   delayedPage.on("download", () => downloads++);

@@ -38,6 +38,10 @@ import {
   RepairRequestsPage,
   ServiceReportsPage,
 } from "./MaintenanceWorkspace";
+import ContractWorkspace from "./ContractWorkspace";
+import ContractReviewerManager from "./ContractReviewerManager";
+import SiteAuditBackup from "./SiteAuditBackup";
+import DemoContractReport from "./DemoContractReport";
 import { loadMaintenanceState, saveMaintenanceState } from "./maintenance";
 import type { MaintenanceState } from "./maintenance";
 import { loadSupabaseMaintenanceState, syncSupabaseMaintenanceState } from "./maintenance-supabase";
@@ -302,7 +306,7 @@ const navItems: { id: Page; label: string; icon: IconName }[] = [
   { id: "service-reports", label: "Service Report", icon: "chart" },
   { id: "repair-requests", label: "ใบแจ้งซ่อม", icon: "warning" },
   { id: "assets", label: "เครื่องจักร", icon: "asset" },
-  { id: "sites", label: "ไซต์ลูกค้า", icon: "building" },
+  { id: "sites", label: "จัดการไซต์", icon: "building" },
   { id: "alerts", label: "Alarm", icon: "bell" },
   { id: "reports", label: "รายงาน", icon: "chart" },
   { id: "iot", label: "IoT Monitor", icon: "iot" },
@@ -316,6 +320,24 @@ const pagesByRole: Record<UserRole, Page[]> = {
   engineer: ["work-orders", "service-reports", "repair-requests", "guide", "uat"],
   user: ["dashboard", "work-orders", "pm", "service-reports", "repair-requests", "assets", "reports", "guide", "uat"],
 };
+
+const pageGroups: { root: Page; label: string; sections: { id: Page; label: string }[] }[] = [
+  { root: "dashboard", label: "มุมมองภาพรวม", sections: [
+    { id: "dashboard", label: "สรุปสถานะ" },
+    { id: "pm", label: "แผน PM" },
+    { id: "reports", label: "รายงาน" },
+    { id: "service-reports", label: "Service Report" },
+  ] },
+  { root: "assets", label: "มุมมองเครื่องจักร", sections: [
+    { id: "assets", label: "ทะเบียนเครื่องจักร" },
+    { id: "work-orders", label: "ใบงาน" },
+    { id: "repair-requests", label: "ใบแจ้งซ่อม" },
+  ] },
+  { root: "sites", label: "มุมมองจัดการไซต์", sections: [
+    { id: "admin", label: "ข้อมูลระบบ" },
+    { id: "sites", label: "ไซต์ลูกค้า" },
+  ] },
+];
 
 const pageTitles: Record<Page, { title: string; subtitle: string }> = {
   uat: { title: "ทดสอบระบบ UAT", subtitle: "ทดสอบตามเคส บันทึกผล และส่งออก" },
@@ -361,7 +383,7 @@ const pageTitles: Record<Page, { title: string; subtitle: string }> = {
     subtitle: "Gateway อุปกรณ์ และ Alarm ของไซต์ที่เลือก",
   },
   admin: {
-    title: "จัดการข้อมูลระบบ",
+    title: "จัดการไซต์",
     subtitle: "ไซต์ ผู้ใช้ สิทธิ์ และทะเบียนเครื่องจักร",
   },
 };
@@ -649,6 +671,7 @@ function DashboardPage({
   onNavigate: (page: Page) => void;
   onCreate: () => void;
 }) {
+  const [calendarVisited, setCalendarVisited] = useState(false);
   const openOrders = orders.filter((order) => order.status !== "เสร็จสิ้น");
   const criticalAlerts = alerts.filter((alert) => alert.level === "critical" && !alert.acknowledged);
   const watchedAssets = siteAssets.filter((asset) => asset.health !== "ปกติ");
@@ -658,7 +681,6 @@ function DashboardPage({
 
   return (
     <div className="cmms-dashboard-page">
-      <WorkCalendar key={jobsiteId} site={jobsiteId} orders={orders} state={maintenanceState} onOrder={onSelectOrder} onReports={()=>onNavigate("service-reports")} onPlans={()=>onNavigate("pm")} />
       <section className="cmms-action-banner">
         <div>
           <span className="cmms-live-label">
@@ -675,18 +697,6 @@ function DashboardPage({
           </button>
         )}
       </section>
-
-      <PlanProgressOverview
-        state={maintenanceState}
-        jobsiteId={jobsiteId}
-        onOpenPlans={() => onNavigate("pm")}
-      />
-
-      <PmDueReminderPanel
-        state={maintenanceState}
-        jobsiteId={jobsiteId}
-        onOpenReports={() => onNavigate("service-reports")}
-      />
 
       <section className={`cmms-kpi-grid ${canOperate ? "" : "viewer"}`} aria-label="ตัวชี้วัดหลัก">
         {canOperate && (
@@ -722,6 +732,29 @@ function DashboardPage({
           tone="amber"
         />
       </section>
+
+      <details className="cmms-calendar-disclosure" onToggle={(event) => {
+        if (event.currentTarget.open) setCalendarVisited(true);
+      }}>
+        <summary>
+          <Icon name="calendar" size={20} />
+          <span>ปฏิทินงานซ่อมบำรุง</span>
+        </summary>
+        {calendarVisited && <WorkCalendar key={jobsiteId} site={jobsiteId} orders={orders} state={maintenanceState}
+          onOrder={onSelectOrder} onReports={() => onNavigate("service-reports")} onPlans={() => onNavigate("pm")} />}
+      </details>
+
+      <PmDueReminderPanel
+        state={maintenanceState}
+        jobsiteId={jobsiteId}
+        onOpenReports={() => onNavigate("service-reports")}
+      />
+
+      <PlanProgressOverview
+        state={maintenanceState}
+        jobsiteId={jobsiteId}
+        onOpenPlans={() => onNavigate("pm")}
+      />
 
       {canOperate && (
         <section className="cmms-dashboard-grid">
@@ -773,7 +806,7 @@ function DashboardPage({
               <h3>แผนงาน 4 วันข้างหน้า</h3>
             </div>
             <button type="button" onClick={() => onNavigate("pm")}>
-              ดูปฏิทิน <Icon name="arrow" size={15} />
+              ดูแผน PM <Icon name="arrow" size={15} />
             </button>
           </div>
           <div className="cmms-mini-schedule">
@@ -1526,6 +1559,7 @@ export default function CMMSApp({
 }) {
   const [activePage, setActivePage] = useState<Page>(() => initialAssetId && pagesByRole[currentUser.role].includes("assets") ? "assets" : currentUser.role === "engineer" ? "service-reports" : "dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [contractReportSource, setContractReportSource] = useState<{scope:string;id:string} | null>(null);
   const [initialOperations] = useState(() => onlineMode ? { workOrders: [], alerts: [] } : loadDemoOperations({ workOrders: initialWorkOrders, alerts: initialAlerts }));
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialOperations.workOrders);
   const [alerts, setAlerts] = useState<AlertItem[]>(initialOperations.alerts);
@@ -1543,12 +1577,13 @@ export default function CMMSApp({
   const [planCommandsReady, setPlanCommandsReady] = useState<boolean | null>(onlineMode ? null : false);
   const [repairCommandsReady, setRepairCommandsReady] = useState<boolean | null>(onlineMode ? null : false);
   const reportPending = useRef(false);
+  const contractPending = useRef(false);
   const reportScope = `${onlineMode}:${currentUser.id}:${currentUser.role}:${activeJobsite.id}`;
   const reportScopeRef = useRef(reportScope);
   reportScopeRef.current = reportScope;
   useEffect(() => { reportScopeRef.current = reportScope; return () => { reportScopeRef.current = "closed"; }; }, [reportScope]);
   useEffect(() => {
-    const preventExit = (event: BeforeUnloadEvent) => { if (reportPending.current) { event.preventDefault(); event.returnValue = ""; } };
+    const preventExit = (event: BeforeUnloadEvent) => { if (reportPending.current || contractPending.current) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", preventExit);
     return () => window.removeEventListener("beforeunload", preventExit);
   }, []);
@@ -1787,18 +1822,19 @@ export default function CMMSApp({
   }, [profileMenuOpen]);
 
   const logout = () => {
-    if (reportPending.current) { setToast("ยังรอยืนยันการบันทึกรายงาน กรุณาตรวจผลก่อนออกจากระบบ"); return; }
+    if (reportPending.current || contractPending.current) { setToast("กรุณาตรวจผลบันทึกก่อนออกจากระบบ"); return; }
     setProfileMenuOpen(false);
     setProfileModalOpen(false);
     onLogout();
   };
 
-  const navigate = (page: Page) => {
-    if (reportPending.current) { setToast("ยังรอยืนยันการบันทึกรายงาน กรุณาตรวจผลก่อนเปลี่ยนหน้า"); return; }
+  const navigate = (page: Page, sourceId?: string) => {
+    if (reportPending.current || contractPending.current) { setToast("กรุณาตรวจผลบันทึกก่อนเปลี่ยนหน้า"); return; }
     if (!pagesByRole[currentUser.role].includes(page)) {
       setToast("บัญชีนี้ไม่มีสิทธิ์เปิดเมนูดังกล่าว");
       return;
     }
+    setContractReportSource(sourceId ? {scope:reportScope,id:sourceId} : null);
     setActivePage(page);
     setSidebarOpen(false);
     setGlobalSearch("");
@@ -1806,7 +1842,7 @@ export default function CMMSApp({
   };
 
   const returnToJobsiteSelection = () => {
-    if (reportPending.current) { setToast("ยังรอยืนยันการบันทึกรายงาน กรุณาตรวจผลก่อนเปลี่ยนไซต์"); return; }
+    if (reportPending.current || contractPending.current) { setToast("กรุณาตรวจผลบันทึกก่อนเปลี่ยนไซต์"); return; }
     setSidebarOpen(false);
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     onChangeJobsite();
@@ -2021,7 +2057,16 @@ export default function CMMSApp({
   }
 
   const allowedPages = pagesByRole[currentUser.role];
-  const visibleNavItems = navItems.filter((item) => allowedPages.includes(item.id));
+  const activeGroup = allowedPages.includes(activePage)
+    ? pageGroups.find((group) => group.sections.some((section) => section.id === activePage))
+    : undefined;
+  const visibleNavItems = navItems.flatMap((item) => {
+    const group = pageGroups.find((entry) => entry.sections.some((section) => section.id === item.id));
+    if (!group) return allowedPages.includes(item.id) ? [{ ...item, target: item.id, active: item.id === activePage }] : [];
+    if (group.root !== item.id) return [];
+    const target = group.sections.find((section) => allowedPages.includes(section.id));
+    return target ? [{ ...item, target: target.id, active: activeGroup === group }] : [];
+  });
   const canOperate = currentUser.role !== "user";
   const scopedWorkOrders = operationsForSite(workOrders,activeJobsite.id,masterData.jobsites);
   const scopedAlerts = operationsForSite(alerts,activeJobsite.id,masterData.jobsites);
@@ -2051,13 +2096,14 @@ export default function CMMSApp({
           <span><strong>ThaiCon</strong><small>MAINTENANCE CLOUD</small></span>
         </a>
         <div className="cmms-sidebar-caption">OPERATIONS</div>
-        <nav>
+        <nav aria-label="เมนูหลัก">
           {visibleNavItems.map((item) => (
             <button
-              className={activePage === item.id ? "active" : ""}
+              className={item.active ? "active" : ""}
+              aria-current={item.active ? "page" : undefined}
               key={item.id}
               type="button"
-              onClick={() => navigate(item.id)}
+              onClick={() => navigate(item.target)}
             >
               <Icon name={item.icon} size={19} />
               <span>{item.label}</span>
@@ -2153,6 +2199,14 @@ export default function CMMSApp({
         </div>
 
         <div className="cmms-content">
+          {activeGroup && <nav className="cmms-section-nav" aria-label={activeGroup.label}>
+            {activeGroup.sections.filter((item) => allowedPages.includes(item.id)).map((item) => <button key={item.id} type="button"
+              aria-current={activePage === item.id ? "page" : undefined} onClick={() => {
+                if (activePage !== item.id) navigate(item.id);
+              }}>
+              {item.label}
+            </button>)}
+          </nav>}
           {maintenanceLive.enabled && ["dashboard","pm","service-reports","repair-requests","reports","assets"].includes(activePage) && <aside className="wo-update-status" role={maintenanceLive.error?"alert":"status"}>
             <p>{maintenanceLive.blocked ? maintenanceLive.error ? "ตรวจข้อมูลงานล่าสุดไม่สำเร็จ เก็บร่างเดิมไว้ หยุดแก้ไขและส่งออกจนกว่าจะยืนยันข้อมูลได้" : "กำลังตรวจข้อมูลงานและสิทธิ์ไซต์ล่าสุด ยังไม่เปิดให้บันทึกหรือส่งออก" : maintenanceLive.connection==="connected" ? "ติดตามการเปลี่ยนแปลง PM รายงาน และใบแจ้งซ่อม • ตรวจซ้ำทุก 30 วินาที" : "การเชื่อมต่ออัปเดตงานยังไม่พร้อม • ใช้ข้อมูลที่ยืนยันล่าสุดและตรวจซ้ำทุก 30 วินาที"}</p>
             {maintenanceLive.error && <button type="button" className="cmms-secondary-button" onClick={maintenanceLive.retry}>โหลดข้อมูลงานล่าสุดอีกครั้ง</button>}
@@ -2186,6 +2240,16 @@ export default function CMMSApp({
               <WorkOrdersPage key={`${currentUser.id}:${currentUser.role}:${activeJobsite.id}`} reportActor={{ userId: currentUser.id, role: currentUser.role }} materialVerified={!onlineMode || (commandsReady === true && !liveAccessDenied && !alarmLive.blocked)} reportSite={activeJobsite} reportScope={`${currentUser.id}:${currentUser.role}:${activeJobsite.id}`} reportMode={onlineMode ? "online" : "demo"} orders={scopedWorkOrders} canOperate={currentUser.role === "admin"} onSelect={openOrder} onCreate={() => setCreateOpen(true)} />
             </>
           )}
+          {activePage === "pm" && onlineMode && currentUser.role === "admin" && (
+            <ContractReviewerManager key={`reviewers:${reportScope}`} site={activeJobsite.id} siteName={activeJobsite.name} />
+          )}
+          {activePage === "pm" && (
+            <ContractWorkspace key={`contracts:${reportScope}`} site={activeJobsite.id} assets={scopedAssets} online={onlineMode}
+              canEdit={currentUser.role === "admin"} assertScope={() => {
+                if (reportScopeRef.current !== reportScope || livePermissions.current.denied) throw new Error("สิทธิ์ไซต์เปลี่ยนไป");
+              }}
+              onPendingChange={pending => { contractPending.current = pending; }} />
+          )}
           {activePage === "pm" && !(onlineMode && (maintenanceRemoteLoading || reportCommandsReady === null)) && (
             <fieldset className="cmms-live-fieldset" disabled={maintenanceLive.blocked}>
             <MaintenancePlansPage
@@ -2203,6 +2267,10 @@ export default function CMMSApp({
           {activePage === "service-reports" && !(onlineMode && (maintenanceRemoteLoading || reportCommandsReady === null)) && (
             <fieldset className="cmms-live-fieldset" disabled={maintenanceLive.blocked}>
             <ServiceReportsPage
+              key={`service-reports:${reportScope}`}
+              initialReportId={contractReportSource?.scope === reportScope ? contractReportSource.id : undefined}
+              onReturnToContractReport={contractReportSource?.scope === reportScope ? () => navigate("reports") : undefined}
+              demoContractEvidence={!onlineMode}
               liveRead={{blocked:maintenanceLive.blocked,error:!!maintenanceLive.error,retry:maintenanceLive.retry}}
               activeJobsite={activeJobsite}
               currentUser={currentUser}
@@ -2240,7 +2308,7 @@ export default function CMMSApp({
             </fieldset>
           )}
           {activePage === "assets" && <AssetsPage initialAssetId={initialAssetId} key={reportScope} siteAssets={scopedAssets} workOrders={scopedWorkOrders} maintenance={maintenanceState} loading={maintenanceRemoteLoading || operationsRemoteLoading} historyError={onlineMode && (maintenanceLive.blocked || operationsReadError || !remoteMaintenanceBaseline.current || !remoteOperationsBaseline.current)} onSelectOrder={openOrder} reportSite={activeJobsite} reportScope={reportScope} reportMode={onlineMode ? "online" : "demo"} registerVerified={!onlineMode || !(maintenanceLive.blocked || alarmLive.blocked || liveAccessDenied)} />}
-          {activePage === "sites" && <SitesPage sites={allowedJobsites} />}
+          {activePage === "sites" && currentUser.role === "admin" && <SitesPage sites={allowedJobsites} />}
           {activePage === "alerts" && <>
             {onlineMode && (operationsRemoteLoading || alarmReady===null || commandsReady===null || operationsReadError) && <aside role={operationsRemoteLoading?"status":"alert"} className="maint-form-error"><p>{operationsRemoteLoading?"กำลังตรวจระบบ Alarm ยังไม่เปิดรับทราบ":"โหลดหรือตรวจระบบ Alarm ไม่สำเร็จ ยังไม่ยืนยันข้อมูลใหม่"}</p><button type="button" className="cmms-secondary-button" disabled={operationsRemoteLoading} onClick={()=>setAlarmLoadAttempt(v=>v+1)}>ตรวจระบบ Alarm อีกครั้ง</button></aside>}
             {alarmBusy && <p role="status">กำลังบันทึกและตรวจการรับทราบจากเซิร์ฟเวอร์…</p>}
@@ -2257,9 +2325,17 @@ export default function CMMSApp({
             )}</>}
           {activePage === "guide" && <Suspense fallback={<p role="status">กำลังเปิดคู่มือ…</p>}><UserGuide role={currentUser.role} onlineMode={onlineMode} onNavigate={navigate} /></Suspense>}
           {activePage === "uat" && <Suspense fallback={<p role="status">กำลังเปิดชุดทดสอบ…</p>}><UatWorkspace key={`${currentUser.id}:${currentUser.role}:${activeJobsite.id}:${onlineMode}`} scope={{ userId: currentUser.id, role: currentUser.role, siteId: activeJobsite.id, mode: onlineMode ? "supabase" : "demo" }} /></Suspense>}
+          {activePage === "reports" && (!onlineMode || (!maintenanceRemoteLoading && !maintenanceLive.blocked && reportCommandsReady !== null && remoteMaintenanceBaseline.current)) && (
+            <DemoContractReport key={`contract-report:${reportScope}`} site={activeJobsite.id} siteName={activeJobsite.name}
+              canIssue={currentUser.role === "admin"} online={onlineMode} reports={maintenanceState.serviceReports}
+              repairs={maintenanceState.repairRequests} onOpenReport={id=>navigate("service-reports",id)} />
+          )}
           {activePage === "reports" && !(onlineMode && (maintenanceRemoteLoading || reportCommandsReady === null || maintenanceLive.blocked)) && <><PerformanceReportsPage key={reportScope} activeJobsite={activeJobsite} state={maintenanceState} mode={onlineMode ? "online" : "demo"} scopeKey={reportScope} /><SiteHistoryReport key={`history:${reportScope}`} orders={scopedWorkOrders} maintenance={maintenanceState} siteId={activeJobsite.id} siteName={activeJobsite.name} scopeKey={reportScope} mode={onlineMode ? "online" : "demo"} verified={!onlineMode || !(operationsRemoteLoading || operationsReadError || liveAccessDenied || alarmLive.blocked || !remoteMaintenanceBaseline.current || !remoteOperationsBaseline.current)} /></>}
           {activePage === "iot" && <IoTMonitor jobsiteId={activeJobsite.id} searchTerm={globalSearch} onNotify={setToast} />}
-          {activePage === "admin" && (
+          {activePage === "admin" && onlineMode && currentUser.role === "admin" && (
+            <SiteAuditBackup key={`audit-backup:${reportScope}`} site={activeJobsite.id} siteName={activeJobsite.name} />
+          )}
+          {activePage === "admin" && currentUser.role === "admin" && (
             <AdminWorkspace
               currentUser={currentUser}
               state={masterData}

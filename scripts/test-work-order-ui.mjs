@@ -1,3 +1,4 @@
+import {openGroupedSection} from './open-grouped-section.mjs';
 // Local Demo only. Uses a new, non-persistent Chrome context, never user tabs.
 // node scripts/test-work-order-ui.mjs <absolute Playwright module> <output dir>
 import assert from 'node:assert/strict';
@@ -21,7 +22,7 @@ try {
     await page.getByPlaceholder('กรอกรหัสผ่าน').fill('demo123');
     await page.getByRole('button', { name: /เข้าสู่ระบบ/ }).click();
     await page.getByRole('button', { name: /SITE-001/ }).click();
-    await page.locator('nav').getByRole('button', { name: 'ใบงาน', exact: true }).click();
+    await openGroupedSection(page, 'ใบงาน');
   }
   async function logout() {
     await page.getByRole('button', { name: 'กลับสู่หน้าเลือกไซต์', exact: true }).click();
@@ -47,7 +48,7 @@ try {
   await drawer.getByRole('button', { name: 'มอบหมายงาน', exact: true }).click();
   await drawer.getByText('มอบหมายงาน', { exact: true }).first().waitFor();
   await page.reload();
-  await page.locator('nav').getByRole('button', { name: 'ใบงาน', exact: true }).click();
+  await openGroupedSection(page, 'ใบงาน');
   await open();
   assert.match(await drawer.innerText(), /ทดสอบข้อมูลคงอยู่หลังรีเฟรช/);
   assert.equal(await drawer.locator('.cmms-timeline > p').count(), 2);
@@ -97,7 +98,7 @@ try {
   await page.screenshot({ path: resolve(output, 'work-order-mobile.png'), fullPage: true });
   await page.reload();
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.locator('nav').getByRole('button', { name: 'ใบงาน', exact: true }).click();
+  await openGroupedSection(page, 'ใบงาน');
   await open();
   await drawer.getByText('ใบงานนี้ตรวจรับแล้ว', { exact: true }).waitFor();
   assert.equal(await drawer.locator('.cmms-timeline > p').count(), 11);
@@ -147,7 +148,7 @@ try {
     localStorage.setItem(key, JSON.stringify(state));
   });
   await page.reload();
-  await page.locator('nav').getByRole('button', { name: 'รายงาน', exact: true }).click();
+  await openGroupedSection(page, 'รายงาน');
   const displayedActual = Number((await page.locator('.maint-report-kpis > div').nth(1).locator('strong').innerText()).replaceAll(',', ''));
   const downloaded = page.waitForEvent('download', { timeout: 15000 });
   await page.getByRole('button', { name: 'ดาวน์โหลด Excel', exact: true }).click();
@@ -162,7 +163,7 @@ try {
   let photoAvailable=false,incompleteDownloads=0;
   await page.route('https://pdf-fixture.example.invalid/proof.png',route=>route.fulfill({status:photoAvailable?200:404,contentType:'image/png',headers:{'Access-Control-Allow-Origin':'*','Cache-Control':'no-store'},body:photoAvailable?syntheticPhoto:Buffer.alloc(0)}));
   page.on('download',()=>incompleteDownloads++);
-  await page.locator('nav').getByRole('button',{name:'Service Report',exact:true}).click();
+  await openGroupedSection(page, 'Service Report');
   await page.getByRole('row').filter({hasText:'SR-UAT-PDF-ERROR'}).getByRole('button',{name:'เปิด',exact:true}).click();
   const reportDetail=page.locator('.maint-detail-modal');
   await reportDetail.getByRole('button',{name:'ดาวน์โหลด PDF',exact:true}).click();
@@ -188,7 +189,7 @@ try {
     const legacy={...original,id:'WO-LEGACY-SITE',title:'Legacy unique site history'};delete legacy.jobsiteId;
     state.workOrders.push(legacy);localStorage.setItem(key,JSON.stringify(state));return legacy.assetId;
   });
-  await page.reload();await page.locator('nav').getByRole('button',{name:'ใบงาน',exact:true}).click();await page.getByRole('row').filter({hasText:'Legacy unique site history'}).waitFor();
+  await page.reload();await openGroupedSection(page, 'ใบงาน');await page.getByRole('row').filter({hasText:'Legacy unique site history'}).waitFor();
   await page.locator('nav').getByRole('button',{name:'เครื่องจักร',exact:true}).click();await page.locator('.cmms-asset-card').filter({hasText:legacyAsset}).click();await page.getByText('WO-LEGACY-SITE • Legacy unique site history',{exact:true}).waitFor();
   const rawAmbiguous=await page.evaluate(async()=>{
     const masterKey='thaicon-cmms-master-data-v1',master=JSON.parse(localStorage.getItem(masterKey)||'null')??(await import('/src/master-data.ts')).buildDefaultMasterData();
@@ -197,7 +198,7 @@ try {
     state.workOrders.push({...legacy,id:'WO-INVALID-SITE',title:'Invalid explicit site record',jobsiteId:'SITE-UNKNOWN'});
     const raw=JSON.stringify(state);localStorage.setItem(key,raw);return raw;
   });
-  await page.reload();await page.locator('nav').getByRole('button',{name:'ใบงาน',exact:true}).click();
+  await page.reload();await openGroupedSection(page, 'ใบงาน');
   await page.getByRole('alert').filter({hasText:'ยังยืนยันรหัสไซต์ไม่ได้'}).waitFor();
   assert.equal(await page.getByRole('row').filter({hasText:'Legacy unique site history'}).count(),0);
   assert.equal(await page.getByRole('row').filter({hasText:'Invalid explicit site record'}).count(),0);

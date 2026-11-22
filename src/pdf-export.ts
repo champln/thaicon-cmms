@@ -1,6 +1,7 @@
 type PdfSection = {
   label: string;
   value: string;
+  pageBreakBefore?: boolean;
 };
 
 const PAGE_WIDTH = 1240;
@@ -31,7 +32,7 @@ function wrapText(context: CanvasRenderingContext2D, value: string, maxWidth: nu
   return lines;
 }
 
-function loadImage(src: string) {
+export function loadReportImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     // Signed Storage URLs authorize in the URL, not browser cookies. Setting
@@ -75,6 +76,8 @@ export async function downloadMaintenancePdf({
   sections,
   photos = [],
   assertCurrent,
+  archivedAt,
+  capture,
 }: {
   filename: string;
   documentTitle: string;
@@ -82,15 +85,17 @@ export async function downloadMaintenancePdf({
   subtitle: string;
   sections: PdfSection[];
   photos?: Array<{ name: string; dataUrl: string }>;
-  assertCurrent?: () => void;
+  assertCurrent?: () => void | Promise<void>;
+  archivedAt?: string;
+  capture?: (blob: Blob) => void;
 }) {
-  assertCurrent?.();
+  await assertCurrent?.();
   const { jsPDF } = await import("jspdf");
   await document.fonts.ready;
   const pages: HTMLCanvasElement[] = [];
   let { canvas, context } = createPage();
   let y = MARGIN;
-  const exportedAt = new Date().toISOString();
+  const exportedAt = archivedAt ?? new Date().toISOString();
 
   const finishPage = () => {
     context.strokeStyle = "#dce4ec";
@@ -135,6 +140,7 @@ export async function downloadMaintenancePdf({
   y += 38;
 
   for (const section of sections) {
+    if (section.pageBreakBefore) nextPage();
     context.font = "26px Anuphan, Arial, sans-serif";
     const valueLines = wrapText(context, section.value || "-", CONTENT_WIDTH - 330);
     let offset = 0;
@@ -176,7 +182,7 @@ export async function downloadMaintenancePdf({
       const x = MARGIN + ((index % 2) * (cardWidth + 24));
       context.strokeStyle = "#dfe6ed";
       context.strokeRect(x, y, cardWidth, cardHeight);
-      const image = await loadImage(photos[index].dataUrl);
+      const image = await loadReportImage(photos[index].dataUrl);
       const scale = Math.min((cardWidth - 20) / image.width, 260 / image.height);
       const drawWidth = image.width * scale;
       const drawHeight = image.height * scale;
@@ -194,6 +200,7 @@ export async function downloadMaintenancePdf({
     if (index > 0) pdf.addPage();
     pdf.addImage(page.toDataURL("image/jpeg", 0.94), "JPEG", 0, 0, 210, 297);
   });
-  assertCurrent?.();
-  pdf.save(filename);
+  await assertCurrent?.();
+  if (capture) capture(pdf.output('blob'));
+  else pdf.save(filename);
 }

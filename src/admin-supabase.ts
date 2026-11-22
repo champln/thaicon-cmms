@@ -54,11 +54,27 @@ type AdminUsersResponse = {
   assignments: Array<{ user_id: string; jobsite_id: string }>;
 };
 
+// The isolated local UAT has no directory Edge Function. Only the directory
+// read uses the signed-in Admin's existing table policies in this mode.
+const localContractUatDirectory = import.meta.env.DEV &&
+  import.meta.env.VITE_CONTRACT_UAT_DIRECTORY === "true" &&
+  ["https://ddpoeszoedbtibgtqxmu.supabase.co", "https://shrvewulyitgonejzcxj.supabase.co"].includes(import.meta.env.VITE_SUPABASE_URL) &&
+  ["127.0.0.1", "localhost"].includes(window.location.hostname);
+
+async function readLocalUatDirectory(): Promise<AdminUsersResponse> {
+  const client = requireClient();
+  const [profiles, assignments] = await Promise.all([
+    readAllPages((start,end) => client.from("profiles").select("id, username, display_name, role, title, is_active").order("id").range(start,end)),
+    readAllPages((start,end) => client.from("user_jobsites").select("user_id, jobsite_id").order("user_id").order("jobsite_id").range(start,end)),
+  ]);
+  return { profiles: profiles.map(profile => ({...profile,email:""})), assignments };
+}
+
 export async function loadSupabaseAdminMasterData(): Promise<MasterDataState> {
   const client = requireClient();
   const [siteRows, usersResponse] = await Promise.all([
     readAllPages((start, end) => client.from("jobsites").select("id, name, province, site_type, is_active, pm_compliance").order("id").range(start, end)),
-    manageSupabaseUser({ action: "list" }) as Promise<AdminUsersResponse>,
+    localContractUatDirectory ? readLocalUatDirectory() : manageSupabaseUser({ action: "list" }) as Promise<AdminUsersResponse>,
   ]);
   const jobsites: ManagedJobsite[] = (siteRows ?? []).map((row) => ({
     id: row.id,
@@ -98,9 +114,28 @@ export async function saveSupabaseJobsite(site: ManagedJobsite) {
   if (error) throw error;
 }
 
-export async function deleteSupabaseJobsite(id: string) {
-  const { error } = await requireClient().from("jobsites").delete().eq("id", id);
-  if (error) throw error;
+const siteDeletionErrors: Record<string, string> = {
+  "42501": "เฉพาะผู้ดูแลระบบที่ยังใช้งานอยู่จึงลบไซต์ได้",
+  "P0002": "ไม่พบไซต์หรือไฟล์สำรอง กรุณาโหลดข้อมูลใหม่",
+  "55P03": "ระบบกำลังบันทึกข้อมูล กรุณาลองอีกครั้ง",
+  "TS001": "ต้องปิดใช้งานไซต์ก่อนลบถาวร",
+  "TS002": "ยังมีข้อมูลอ้างอิงหรือไฟล์แนบของไซต์ จึงลบถาวรไม่ได้",
+  "TS003": "ข้อมูลไซต์เปลี่ยนหรือไฟล์สำรองหมดอายุ กรุณาสำรองใหม่",
+};
+
+export async function prepareSupabaseJobsiteDeletion(id: string): Promise<string> {
+  const { data, error } = await requireClient().rpc("prepare_site_deletion", { p_site: id });
+  if (error || typeof data !== "string") {
+    throw new Error(siteDeletionErrors[error?.code ?? ""] ?? "สำรองข้อมูลบนเซิร์ฟเวอร์ไม่สำเร็จ");
+  }
+  return data;
+}
+
+export async function deleteSupabaseJobsite(id: string, backupId: string) {
+  const { data, error } = await requireClient().rpc("delete_closed_site", { p_site: id, p_backup: backupId });
+  if (error || data !== true) {
+    throw new Error(siteDeletionErrors[error?.code ?? ""] ?? "ยังยืนยันผลการลบไม่ได้ กรุณาลองอีกครั้ง");
+  }
 }
 
 export function assetPayload(asset: ManagedAsset) {

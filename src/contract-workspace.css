@@ -1,0 +1,24 @@
+.contract-workspace .maint-form > * { min-width: 0; }
+.contract-workspace .contract-fields { border: 1px solid #cad6e1; border-radius: 8px; min-inline-size: 0; margin: 0; padding: 14px; }
+.contract-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 12px; margin-bottom: 14px; }
+.contract-start { align-self: end; justify-self: start; }
+.contract-workspace input, .contract-workspace select, .contract-workspace button { min-height: 44px; }
+.contract-targets { width: 100%; border-collapse: collapse; }
+.contract-targets th, .contract-targets td { padding: 8px; text-align: start; border-bottom: 1px solid #e5ebf1; }
+.contract-targets input { min-width: 4rem; }
+.contract-targets thead, .contract-targets tfoot { background: #f5f8fb; }
+.contract-assets { margin-block: 20px; }
+.contract-asset-list { padding: 0; list-style: none; max-block-size: 20rem; overflow: auto; }
+.contract-asset-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid #e5ebf1; overflow-wrap: anywhere; }
+.contract-report { min-width: 0; margin-bottom: 16px; }
+.contract-report-note { padding-inline: 16px; }
+.contract-report .maint-table-wrap { margin-block: 12px; }
+.contract-report caption { text-align: start; font-weight: 700; padding: 12px 16px; }
+.contract-report tbody th { font-weight: 600; white-space: nowrap; }
+.contract-report-sources { padding: 0; list-style: none; margin: 0; }
+.contract-report button, .contract-report summary { min-height: 44px; }
+.contract-report summary { cursor: pointer; padding-block: 10px; box-sizing: border-box; }
+.contract-delivery { border-top: 1px solid #e5ebf1; padding: 16px; }
+.contract-delivery h4 { margin-top: 0; }
+.contract-delivery label { display: grid; gap: 6px; min-width: 0; }
+.contract-delivery input, .contract-delivery select { width: 100%; min-height: 44px; font: inherit; }

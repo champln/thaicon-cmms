@@ -99,7 +99,7 @@
 .access-server-status.checking i { background: #b9c6d5; box-shadow: 0 0 0 5px rgba(185, 198, 213, .15); }
 .access-service-statuses { display: grid; gap: 12px; position: relative; z-index: 1; }
 .access-service-statuses .access-server-status { width: fit-content; max-width: 100%; }
-.access-database-status.demo i, .access-database-status.restricted i { background: #b9c6d5; box-shadow: 0 0 0 5px rgba(185, 198, 213, .15); }
+.access-database-status.demo i, .access-database-status.restricted i, .access-database-status.unknown i { background: #b9c6d5; box-shadow: 0 0 0 5px rgba(185, 198, 213, .15); }
 .access-security-note span,
 .access-security-note strong,
 .access-security-note small { display: block; }

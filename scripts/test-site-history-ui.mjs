@@ -1,3 +1,4 @@
+import {openGroupedSection} from './open-grouped-section.mjs';
 // Synthetic state only in a fresh Demo context. No customer browser or DB.
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
@@ -23,7 +24,7 @@ try {
   operations.workOrders.push({...operations.workOrders[0],id:"WO-HISTORY-TEST",jobsiteId:"SITE-001",assetId:"CR-DP-02",title:"HISTORY-TEST job",createdAt:"2026-10-05T17:00:00Z"});
   localStorage.setItem(key,JSON.stringify(operations));
  });
- await page.reload();await page.locator("nav").getByRole("button",{name:"รายงาน",exact:true}).click();
+ await page.reload();await openGroupedSection(page, "รายงาน");
  const section=page.getByRole("region",{name:"ประวัติและเอกสารเชื่อมโยงของไซต์"});
  await section.getByLabel("ค้นหาเอกสาร",{exact:true}).fill("HISTORY-TEST");
  await section.getByText("ใบงาน 1 ใบ • Service Report 1 ใบ • ใบแจ้งซ่อม 1 ใบ",{exact:true}).waitFor({timeout:5000}).catch(async error=>{console.error(await section.innerText());throw error;});
@@ -48,7 +49,7 @@ try {
  await heldPage.goto("http://127.0.0.1:15181/");
  await heldPage.getByPlaceholder("เช่น admin").fill("admin");await heldPage.getByPlaceholder("กรอกรหัสผ่าน").fill("demo123");
  await heldPage.getByRole("button",{name:/^เข้าสู่ระบบ/}).click();await heldPage.getByRole("button",{name:/SITE-001/}).click();
- await heldPage.locator("nav").getByRole("button",{name:"รายงาน",exact:true}).click();
+ await openGroupedSection(heldPage, "รายงาน");
  const heldSection=heldPage.getByRole("region",{name:"ประวัติและเอกสารเชื่อมโยงของไซต์"});
  let entered,release,downloads=0;
  const enter=new Promise(r=>{entered=r;}),hold=new Promise(r=>{release=r;});

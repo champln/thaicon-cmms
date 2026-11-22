@@ -1,3 +1,4 @@
+import {openGroupedSection} from './open-grouped-section.mjs';
 // Fresh Demo browser only; hold first import to prove final stale-export guard.
 import { pathToFileURL } from "node:url";
 import { mkdir } from "node:fs/promises";
@@ -16,7 +17,7 @@ try {
   await page.getByPlaceholder("กรอกรหัสผ่าน").fill("demo123");
   await page.getByRole("button", { name: /^เข้าสู่ระบบ/ }).click();
   await page.getByRole("button", { name: /SITE-001/ }).click();
-  await page.locator("nav").getByRole("button", { name: "ใบงาน", exact: true }).click();
+  await openGroupedSection(page, "ใบงาน");
   let entered, release, downloads = 0;
   const enter = new Promise(resolve => { entered = resolve; }), hold = new Promise(resolve => { release = resolve; });
   page.on("download", () => downloads++);

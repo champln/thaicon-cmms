@@ -1,3 +1,4 @@
+import {openGroupedSection} from './open-grouped-section.mjs';
 // Isolated local Auth/JWT only. Never points to Production or modifies customer rows.
 import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -36,7 +37,7 @@ try {
  await page.goto("http://127.0.0.1:15184/");
  await page.getByPlaceholder("เช่น admin").fill(email);await page.getByPlaceholder("กรอกรหัสผ่าน").fill(password);
  await page.getByRole("button",{name:/^เข้าสู่ระบบ/}).click();await page.getByRole("button",{name:/SITE-907/}).click();
- await page.locator("nav").getByRole("button",{name:"ใบงาน",exact:true}).click();
+ await openGroupedSection(page, "ใบงาน");
  await page.getByLabel("ค้นหาใบงาน",{exact:true}).fill(order.data.title);
  let fail=true;
  await page.route("**/rest/v1/work_order_materials?*",route=>fail?route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({message:"Synthetic outage"})}):route.continue());

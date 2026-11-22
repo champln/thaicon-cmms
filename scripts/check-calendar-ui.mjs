@@ -4,10 +4,37 @@ const {default:pw}=await import(pathToFileURL(process.argv[2]).href);
 const browser=await pw.chromium.launch({channel:'chrome',headless:true});
 try {
  const page=await browser.newPage({viewport:{width:1440,height:1000}});
- await page.goto('http://127.0.0.1:15181/');
+ const url=process.argv[3] ?? 'http://127.0.0.1:15181/';
+ await page.goto(url);
  await page.getByPlaceholder('เช่น admin').fill('admin');await page.getByPlaceholder('กรอกรหัสผ่าน').fill('demo123');
  await page.getByRole('button',{name:/^เข้าสู่ระบบ/}).click();await page.getByRole('button',{name:/SITE-001/}).click();
- await page.locator('.work-calendar').waitFor();
+ const overview=page.getByRole('navigation',{name:'มุมมองภาพรวม'});
+ const sidebar=page.getByRole('navigation',{name:'เมนูหลัก'});
+ const toggle=page.locator('.cmms-calendar-disclosure > summary').filter({hasText:'ปฏิทินงานซ่อมบำรุง'});
+ await toggle.waitFor();
+ assert.equal(await page.locator('.work-calendar').count(),0);
+ const kpis=page.getByRole('region',{name:'ตัวชี้วัดหลัก'});
+ assert.ok((await kpis.boundingBox()).y < (await toggle.boundingBox()).y);
+ for(const label of ['แผน PM','รายงาน','Service Report']) {
+  assert.equal(await sidebar.getByRole('button',{name:label,exact:true}).count(),0);
+  const tab=overview.getByRole('button',{name:label,exact:true});
+  await tab.click();
+  assert.equal(await tab.getAttribute('aria-current'),'page');
+  assert.equal(await sidebar.getByRole('button',{name:'ภาพรวม',exact:true}).getAttribute('aria-current'),'page');
+ }
+ const equipment=page.getByRole('navigation',{name:'มุมมองเครื่องจักร'});
+ const equipmentMenu=sidebar.getByRole('button',{name:'เครื่องจักร',exact:true});
+ await equipmentMenu.click();
+ assert.deepEqual(await equipment.getByRole('button').allTextContents(),['ทะเบียนเครื่องจักร','ใบงาน','ใบแจ้งซ่อม']);
+ for(const label of ['ใบงาน','ใบแจ้งซ่อม']) {
+  assert.equal(await sidebar.getByRole('button',{name:label,exact:true}).count(),0);
+  const tab=equipment.getByRole('button',{name:label,exact:true});
+  await tab.click();
+  assert.equal(await tab.getAttribute('aria-current'),'page');
+  assert.equal(await equipmentMenu.getAttribute('aria-current'),'page');
+ }
+ await sidebar.getByRole('button',{name:'ภาพรวม',exact:true}).click();
+ await overview.getByRole('button',{name:'สรุปสถานะ'}).click();
  await page.evaluate(()=>{
   const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   for(const key of Object.keys(localStorage)) {
@@ -17,6 +44,8 @@ try {
  });
  await page.reload();
  const calendar=page.locator('.work-calendar');
+ await toggle.focus();
+ await page.keyboard.press('Enter');
  await calendar.getByText(/Calendar synthetic check/).first().waitFor();
  await calendar.getByRole('button',{name:'กำหนดการ',exact:true}).click();
  await calendar.locator('.calendar-event').filter({hasText:'Calendar synthetic check'}).click();
@@ -28,9 +57,28 @@ try {
  await calendar.getByRole('button',{name:'ล้างตัวกรอง'}).click();
  for(const name of ['สัปดาห์','วัน','เดือน'])await calendar.getByRole('button',{name,exact:true}).click();
  await calendar.getByRole('button',{name:'ช่วงถัดไป'}).click();await calendar.getByRole('button',{name:'วันนี้',exact:true}).click();
- await page.setViewportSize({width:390,height:844});
+ await toggle.click();
+ assert.equal(await calendar.isVisible(),false);
+ await page.setViewportSize({width:375,height:812});
+ await toggle.click();
  assert.equal(await calendar.locator('.calendar-grid-wrap').isVisible(),false);
  assert.equal(await calendar.locator('.calendar-agenda').isVisible(),true);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
- console.log('PASS calendar: dated WO, open detail, filters, views, navigation, mobile agenda; isolated data only');
+ for(const viewport of [{width:768,height:1024},{width:844,height:390}]) {
+  await page.setViewportSize(viewport);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ }
+ const engineer=await browser.newPage();
+ await engineer.goto(url);
+ await engineer.getByPlaceholder('เช่น admin').fill('engineer');
+ await engineer.getByPlaceholder('กรอกรหัสผ่าน').fill('demo123');
+ await engineer.getByRole('button',{name:/^เข้าสู่ระบบ/}).click();
+ await engineer.locator('.site-option').first().click();
+ const engineerOverview=engineer.getByRole('navigation',{name:'มุมมองภาพรวม'});
+ assert.deepEqual(await engineerOverview.getByRole('button').allTextContents(),['Service Report']);
+ await engineer.getByRole('navigation',{name:'เมนูหลัก'}).getByRole('button',{name:'เครื่องจักร',exact:true}).click();
+ const engineerEquipment=engineer.getByRole('navigation',{name:'มุมมองเครื่องจักร'});
+ assert.deepEqual(await engineerEquipment.getByRole('button').allTextContents(),['ใบงาน','ใบแจ้งซ่อม']);
+ assert.equal(await engineerEquipment.getByRole('button',{name:'ใบงาน',exact:true}).getAttribute('aria-current'),'page');
+ console.log('PASS overview navigation, role access, keyboard disclosure, dated WO, calendar filters and mobile agenda');
 } finally {await browser.close();}

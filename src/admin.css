@@ -26,6 +26,10 @@
 .admin-table-wrap td > small { color: #8290a0; font-size: var(--ui-text-small); margin-top: 3px; }
 .admin-actions { display: flex; gap: 6px; justify-content: flex-end; }
 .admin-actions button.danger { color: #bf3e4c; }
+.admin-form-actions button.danger { background: #a12736; border-color: #a12736; color: #fff; }
+.admin-form-actions button:disabled { cursor: not-allowed; opacity: .55; }
+.admin-form-actions button { min-height: 44px; }
+.admin-form-actions { flex-wrap: wrap; }
 .admin-status, .admin-health { background: #eef1f4; border-radius: 999px; color: #667586; display: inline-block; font-size: var(--ui-text-small); font-weight: 700; padding: 5px 9px; white-space: nowrap; }
 .admin-status.active, .admin-health.healthy { background: #e5f6ee; color: #148657; }
 .admin-health.watch { background: #fff2dc; color: #ad6c0a; }
